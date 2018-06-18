@@ -7,6 +7,14 @@
 typedef struct cpu CPU;
 typedef union reg REGISTER;
 
+union reg{
+    struct{
+        BYTE lo;
+        BYTE hi;
+    };
+    WORD reg;
+};
+
 struct cpu{
     WORD pc;
     WORD sp;
@@ -16,14 +24,6 @@ struct cpu{
     REGISTER hl;
 
     MEMORY *memory;
-};
-
-union reg{
-    struct{
-        BYTE lo;
-        BYTE hi;
-    };
-    WORD reg;
 };
 
 CPU *CPU_Create();
