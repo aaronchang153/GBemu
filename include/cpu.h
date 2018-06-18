@@ -4,21 +4,27 @@
 #include "common.h"
 #include "memory.h"
 
-#define Z_FLAG 0x80
-#define N_FLAG 0x40
-#define H_FLAG 0x20
-#define C_FLAG 0x10
+typedef struct cpu CPU;
+typedef union reg REGISTER;
 
-typedef struct{
+struct cpu{
     WORD pc;
     WORD sp;
-    BYTE a, f; 
-    BYTE b, c;
-    BYTE d, e;
-    BYTE h, l;
+    REGISTER af;
+    REGISTER bc;
+    REGISTER de;
+    REGISTER hl;
 
     MEMORY *memory;
-} CPU;
+};
+
+union reg{
+    struct{
+        BYTE lo;
+        BYTE hi;
+    };
+    WORD reg;
+};
 
 CPU *CPU_Create();
 
