@@ -3,13 +3,6 @@
 
 #include "common.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define BOOT_ROM_SIZE 0x100     // 256  B
-#define MEMORY_SIZE   0x10000   //  64 KB
-
 
 typedef struct{
     char startup;

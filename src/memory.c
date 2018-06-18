@@ -1,6 +1,13 @@
 #include "memory.h"
 
-const char *BOOT_ROM = "bootstrap.bin";
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static const int BOOT_ROM_SIZE = 0x100;     // 256  B
+static const int MEMORY_SIZE   = 0x10000;   //  64 KB
+
+static const char *BOOT_ROM = "bootstrap.bin";
 
 
 MEMORY *Mem_Create(){
