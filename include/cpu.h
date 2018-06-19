@@ -18,10 +18,12 @@ union reg{
 struct cpu{
     WORD pc;
     WORD sp;
+    BYTE ir;
     REGISTER af;
     REGISTER bc;
     REGISTER de;
     REGISTER hl;
+    unsigned int clk_timer;
 
     MEMORY *memory;
 };
@@ -35,5 +37,13 @@ CPU *CPU_Create();
 
 void CPU_Destroy(CPU *c);
 
+// Emulate a single instruction cycle
+void CPU_EmulateCycle(CPU *c);
+
+static inline void CPU_SetFlag(CPU *c, BYTE flag) { c->af.lo |= flag; }
+
+static inline void CPU_ClearFlag(CPU *c, BYTE flag) { c->af.lo &= (~flag); }
+
+static inline char CPU_CheckFlag(CPU *c, BYTE cond) { return (c->af.lo & cond) == cond; }
 
 #endif // CPU_H
