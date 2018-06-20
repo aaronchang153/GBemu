@@ -40,6 +40,8 @@ void CPU_Destroy(CPU *c);
 // Emulate a single instruction cycle
 void CPU_EmulateCycle(CPU *c);
 
+void CPU_DecodeExecute(CPU *c);
+
 static inline void CPU_SetFlag(CPU *c, BYTE flag) { c->af.lo |= flag; }
 
 static inline void CPU_ClearFlag(CPU *c, BYTE flag) { c->af.lo &= (~flag); }
