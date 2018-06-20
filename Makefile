@@ -19,6 +19,8 @@ memory.o : src/memory.c include/memory.h
 main.o : main.c
 	gcc $(INCLUDE) $(CFLAGS) -c main.c -o obj/main.o
 
+objects : cpu.o opcode.o decode.o memory.o main.o
+
 GBemu : cpu.o opcode.o decode.o memory.o main.o
 	gcc $(INCLUDE) $(CFLAGS) $(OBJECT_FILES) -o bin/GBemu.exe
 
