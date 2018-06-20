@@ -16,13 +16,15 @@ union reg{
 };
 
 struct cpu{
+    BYTE ir;
     WORD pc;
     WORD sp;
-    BYTE ir;
     REGISTER af;
     REGISTER bc;
     REGISTER de;
     REGISTER hl;
+    char halted;
+    char interrupt_enable;
     unsigned int clk_timer;
 
     MEMORY *memory;
