@@ -27,14 +27,16 @@ static void Decode_X_3(CPU *c);
 
 static inline void p_undef(CPU *c) { printf("Undefined opcode %x\n", c->ir); }
 
-typedef void (*ALU_OP)(CPU*, BYTE*, BYTE);
+typedef void (*ALU_OP_REG)(CPU*, BYTE*);
+typedef void (*ALU_OP_MEM)(CPU*, WORD);
 typedef void (*ROT_OP)(CPU*, BYTE*);
 
 static BYTE *deref_rTable(CPU *c, int index);
 static WORD *deref_rpTable(CPU *c, int index);
 static WORD *deref_rp2Table(CPU *c, int index);
 static BYTE deref_ccTable(int index);
-static ALU_OP deref_aluTable(int index);
+static ALU_OP_REG deref_aluRegTable(int index);
+static ALU_OP_MEM deref_aluMemTable(int index);
 static ROT_OP deref_rotTable(int index);
 
 static void NOP(CPU *c);
@@ -58,20 +60,29 @@ static void LD_Reg8toReg8(CPU *c, BYTE *reg1, BYTE *reg2);
 static void LD_Mem8toReg8(CPU *c, BYTE *reg, WORD addr);
 static void LD_Reg8toMem8(CPU *c, WORD addr, BYTE *reg);
 // ALU operations
-static void ADD_toReg8(CPU *c, BYTE *reg, BYTE data);
-static void ADC_toReg8(CPU *c, BYTE *reg, BYTE data);
-static void SUB_toReg8(CPU *c, BYTE *reg, BYTE data);
-static void SBC_toReg8(CPU *c, BYTE *reg, BYTE data);
-static void AND(CPU *c, BYTE* reg, BYTE data);
-static void XOR(CPU *c, BYTE* reg, BYTE data);
-static void OR(CPU *c, BYTE* reg, BYTE data);
-static void CP(CPU *c, BYTE* reg, BYTE data); // compare reg and data
 static void INC_Reg8(CPU *c, BYTE *reg);
 static void DEC_Reg8(CPU *c, BYTE *reg);
-static void INC_Reg16(CPU *c, BYTE *reg);
-static void DEC_Reg16(CPU *c, BYTE *reg);
+static void INC_Reg16(CPU *c, WORD *reg);
+static void DEC_Reg16(CPU *c, WORD *reg);
 static void ADD_HL(CPU *c, WORD *reg);
 static void ADD_SP(CPU *c, SIGNED_BYTE displace);
+// 8-bit ALU (all of these operate on and store the result in A)
+static void ADDA_Reg8(CPU *c, BYTE *reg);
+static void ADDA_Mem8(CPU *c, WORD addr);
+static void ADCA_Reg8(CPU *c, BYTE *reg);
+static void ADCA_Mem8(CPU *c, WORD addr);
+static void SUB_Reg8(CPU *c, BYTE *reg);
+static void SUB_Mem8(CPU *c, WORD addr);
+static void SBC_Reg8(CPU *c, BYTE *reg);
+static void SBC_Mem8(CPU *c, WORD addr);
+static void AND_Reg8(CPU *c, BYTE *reg);
+static void AND_Mem8(CPU *c, WORD addr);
+static void XOR_Reg8(CPU *c, BYTE *reg);
+static void XOR_Mem8(CPU *c, WORD addr);
+static void OR_Reg8(CPU *c, BYTE *reg);
+static void OR_Mem8(CPU *c, WORD addr);
+static void CP_Reg8(CPU *c, BYTE *reg);
+static void CP_Mem8(CPU *c, WORD addr);
 // Rotates and shifts
 static void RLC(CPU *c, BYTE *reg);
 static void RRC(CPU *c, BYTE *reg);
@@ -83,9 +94,10 @@ static void SWAP(CPU *c, BYTE *reg);
 static void SRL(CPU *c, BYTE *reg);
 // Misc.
 static void DAA(CPU *c); // Convert A to packed BCD
-static inline CPL(CPU *c); // Complement A
+static void inline CPL(CPU *c); // Complement A
 static void CCF(CPU *c); // Complement carry flag
 static void SCF(CPU *c); // Set carry flag
+static void CD_Prefix(CPU *c);
 
 static const BYTE Z_FLAG = 0x80; // Zero flag
 static const BYTE N_FLAG = 0x40; // Subtract flag
@@ -348,6 +360,21 @@ static void Decode_X_1(CPU *c){
     }
 }
 
+static void Decode_X_2(CPU *c){
+    // alu[y] r[z]
+    int y = Y(c->ir);
+    int z = Z(c->ir);
+    if(z == 6){
+        deref_aluMemTable(y)(c, c->hl.reg);
+    }
+    else if (z >= 0 && z < 8){
+        deref_aluRegTable(y)(c, deref_rTable(c, z));
+    }
+    else{
+        p_undef(c);
+    }
+}
+
 static BYTE *deref_rTable(CPU *c, int index){
     switch(index){
         case 0: return &c->bc.hi;
@@ -391,16 +418,30 @@ static BYTE deref_ccTable(int index){
     };
 }
 
-static ALU_OP deref_aluTable(int index){
+static ALU_OP_REG deref_aluRegTable(int index){
     switch(index){
-        case 0: return &ADD_toReg8;
-        case 1: return &ADC_toReg8;
-        case 2: return &SUB_toReg8;
-        case 3: return &SBC_toReg8;
-        case 4: return &AND;
-        case 5: return &XOR;
-        case 6: return &OR;
-        case 7: return &CP;
+        case 0: return &ADDA_Reg8;
+        case 1: return &ADCA_Reg8;
+        case 2: return &SUB_Reg8;
+        case 3: return &SBC_Reg8;
+        case 4: return &AND_Reg8;
+        case 5: return &XOR_Reg8;
+        case 6: return &OR_Reg8;
+        case 7: return &CP_Reg8;
+        default: return NULL;
+    };
+}
+
+static ALU_OP_MEM deref_aluMemTable(int index){
+    switch(index){
+        case 0: return &ADDA_Mem8;
+        case 1: return &ADCA_Mem8;
+        case 2: return &SUB_Mem8;
+        case 3: return &SBC_Mem8;
+        case 4: return &AND_Mem8;
+        case 5: return &XOR_Mem8;
+        case 6: return &OR_Mem8;
+        case 7: return &CP_Mem8;
         default: return NULL;
     };
 }
