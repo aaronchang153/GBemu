@@ -39,14 +39,24 @@ static ROT_OP deref_rotTable(int index);
 
 static void NOP(CPU *c);
 static void STOP(CPU *c);
+static void HALT(CPU *c);
 // Jumps
 static void JR(CPU *c);
 static void JR_cc(CPU *c, BYTE cond);
 // Loads
-static void LD_toMem8(CPU *c, WORD addr, BYTE data);
-static void LD_toReg8(CPU *c, BYTE *reg, BYTE data);
-static void LD_toMem16(CPU *c, WORD addr, WORD data);
-static void LD_toReg16(CPU *c, WORD *reg, WORD data);
+static void LD_SPtoMem16(CPU *c);
+static void LD_Imm16toReg16(CPU *c, WORD *reg);
+static void LD_Imm8toReg8(CPU *c, BYTE *reg);
+static void LD_Imm8toMem8(CPU *c, WORD addr);
+static void LD_AtoMem8(CPU *c, WORD addr);
+static void LD_Mem8toA(CPU *c, WORD addr);
+static void LDI_toMem8(CPU *c, WORD *addr);
+static void LDI_toA(CPU *c, WORD *addr);
+static void LDD_toMem8(CPU *c, WORD *addr);
+static void LDD_toA(CPU *c, WORD *addr);
+static void LD_Reg8toReg8(CPU *c, BYTE *reg1, BYTE *reg2);
+static void LD_Mem8toReg8(CPU *c, BYTE *reg, WORD addr);
+static void LD_Reg8toMem8(CPU *c, WORD addr, BYTE *reg);
 // ALU operations
 static void ADD_toReg8(CPU *c, BYTE *reg, BYTE data);
 static void ADC_toReg8(CPU *c, BYTE *reg, BYTE data);
@@ -71,6 +81,11 @@ static void SL(CPU *c, BYTE *reg);
 static void SR(CPU *c, BYTE *reg);
 static void SWAP(CPU *c, BYTE *reg);
 static void SRL(CPU *c, BYTE *reg);
+// Misc.
+static void DAA(CPU *c); // Convert A to packed BCD
+static inline CPL(CPU *c); // Complement A
+static void CCF(CPU *c); // Complement carry flag
+static void SCF(CPU *c); // Set carry flag
 
 static const BYTE Z_FLAG = 0x80; // Zero flag
 static const BYTE N_FLAG = 0x40; // Subtract flag
@@ -140,7 +155,7 @@ static void Decode_X_0(CPU *c){
                     NOP(c);
                     break;
                 case 1: // LD (nn),SP
-                    LD_toMem16(c, Mem_ReadWord(c->memory, c->pc+1), c->sp);
+                    LD_SPtoMem16(c);
                     break;
                 case 2: // STOP
                     STOP(c);
@@ -161,7 +176,7 @@ static void Decode_X_0(CPU *c){
         case 1:
             switch(Q(c->ir)){
                 case 0: // LD rp[p],nn
-                    LD_toReg16(c, deref_rpTable(c, P(c->ir)), Mem_ReadWord(c->memory, c->pc+1));
+                    LD_Imm16toReg16(c, deref_rpTable(c, P(c->ir)));
                     break;
                 case 1: // ADD HL,rp[p]
                     ADD_HL(c, deref_rpTable(c, P(c->ir)));
@@ -175,18 +190,16 @@ static void Decode_X_0(CPU *c){
                 case 0:
                     switch(P(c->ir)){
                         case 0: // LD (BC),A
-                            LD_toMem8(c, c->bc.reg, c->af.hi);
+                            LD_AtoMem8(c, c->bc.reg);
                             break;
                         case 1: // LD (DE),A
-                            LD_toMem8(c, c->de.reg, c->af.hi);
+                            LD_AtoMem8(c, c->de.reg);
                             break;
                         case 2: // LD (HL+),A
-                            LD_toMem16(c, c->hl.reg, c->af.hi);
-                            Mem_IncByte(c->memory, c->hl.reg);
+                            LDI_toMem8(c, &c->hl.reg);
                             break;
                         case 3: // LD (HL-),A
-                            LD_toMem16(c, c->hl.reg, c->af.hi);
-                            Mem_DecByte(c->memory, c->hl.reg);
+                            LDD_toMem8(c, &c->hl.reg);
                             break;
                         default:
                             p_undef(c);
@@ -195,18 +208,16 @@ static void Decode_X_0(CPU *c){
                 case 1:
                     switch(P(c->ir)){
                         case 0: // LD A,(BC)
-                            LD_toReg8(c, &c->af.hi, Mem_ReadByte(c->memory, c->bc.reg));
+                            LD_Mem8toA(c, c->bc.reg);
                             break;
                         case 1: // LD A,(DE)
-                            LD_toReg8(c, &c->af.hi, Mem_ReadByte(c->memory, c->de.reg));
+                            LD_Mem8toA(c, c->de.reg);
                             break;
                         case 2: // LD A,(HL+)
-                            LD_toReg8(c, &c->af.hi, Mem_ReadByte(c->memory, c->hl.reg));
-                            Mem_IncByte(c->memory, c->hl.reg);
+                            LDI_toA(c, &c->hl.reg);
                             break;
                         case 3: // LD A,(HL-)
-                            LD_toReg8(c, &c->af.hi, Mem_ReadByte(c->memory, c->hl.reg));
-                            Mem_DecByte(c->memory, c->hl.reg);
+                            LDD_toA(c, &c->hl.reg);
                             break;
                         default:
                             p_undef(c);
@@ -272,10 +283,10 @@ static void Decode_X_0(CPU *c){
                 case 4:
                 case 5:
                 case 7:
-                    LD_toReg8(c, deref_rTable(c, Y(c->ir)), Mem_ReadByte(c->memory, c->pc+1));
+                    LD_Imm8toReg8(c, deref_rTable(c, Y(c->ir)));
                     break;
                 case 6:
-                    LD_toMem8(c, c->hl.reg, Mem_ReadByte(c->memory, c->pc+1));
+                    LD_Imm8toMem8(c, c->hl.reg);
                     break;
                 default:
                     p_undef(c);
@@ -284,20 +295,28 @@ static void Decode_X_0(CPU *c){
         case 7:
             switch(Y(c->ir)){
                 case 0: // RLCA
+                    RLC(c, &c->af.hi);
                     break;
                 case 1: // RRCA
+                    RRC(c, &c->af.hi);
                     break;
                 case 2: // RLA
+                    RL(c, &c->af.hi);
                     break;
                 case 3: // RRA
+                    RR(c, &c->af.hi);
                     break;
                 case 4: // DAA
+                    DAA(c);
                     break;
                 case 5: // CPL
+                    CPL(c);
                     break;
                 case 6: // SCF
+                    SCF(c);
                     break;
                 case 7: // CCF
+                    CCF(c);
                     break;
                 default:
                     p_undef(c);
@@ -306,6 +325,27 @@ static void Decode_X_0(CPU *c){
         default:
             p_undef(c);
     };
+}
+
+static void Decode_X_1(CPU *c){
+    int z = Z(c->ir);
+    int y = Y(c->ir);
+    if(y == 6 && z == 6){ // HALT
+        HALT(c);
+    }
+    else{ // LD r[y],r[z]
+        if(z == 6){
+            LD_Mem8toReg8(c, deref_rTable(c, y), c->hl.reg);
+        }
+        else{
+            if(y == 6){
+                LD_Reg8toMem8(c, c->hl.reg, deref_rTable(c, z));
+            }
+            else{
+                LD_Reg8toReg8(c, deref_rTable(c, y), deref_rTable(c, z));
+            }
+        }
+    }
 }
 
 static BYTE *deref_rTable(CPU *c, int index){
