@@ -24,9 +24,5 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr);
 
 WORD Mem_ReadWord(MEMORY *mem, WORD addr);
 
-void Mem_IncByte(MEMORY *mem, WORD addr);
-
-void Mem_DecByte(MEMORY *mem, WORD addr);
-
 
 #endif // MEMORY_H
