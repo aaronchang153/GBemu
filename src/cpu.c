@@ -29,7 +29,8 @@ static inline void p_undef(CPU *c) { printf("Undefined opcode %x\n", c->ir); }
 
 typedef void (*ALU_OP_REG)(CPU*, BYTE*);
 typedef void (*ALU_OP_MEM)(CPU*, WORD);
-typedef void (*ROT_OP)(CPU*, BYTE*);
+typedef void (*ROT_OP_REG)(CPU*, BYTE*);
+typedef void (*ROT_OP_MEM)(CPU*, WORD);
 
 static BYTE *deref_rTable(CPU *c, int index);
 static WORD *deref_rpTable(CPU *c, int index);
@@ -37,17 +38,31 @@ static WORD *deref_rp2Table(CPU *c, int index);
 static BYTE deref_ccTable(int index);
 static ALU_OP_REG deref_aluRegTable(int index);
 static ALU_OP_MEM deref_aluMemTable(int index);
-static ROT_OP deref_rotTable(int index);
+static ROT_OP_REG deref_rotRegTable(int index);
+static ROT_OP_MEM deref_rotMemTable(int index);
 
+// Control
 static void NOP(CPU *c);
 static void STOP(CPU *c);
 static void HALT(CPU *c);
+static void DI(CPU *c);
+static void EI(CPU *c);
 // Jumps
+static void JP(CPU *c);
+static void JP_cc(CPU *c, BYTE cond);
+static void JP_HL(CPU *c);
 static void JR(CPU *c);
 static void JR_cc(CPU *c, BYTE cond);
-// Loads
-static void LD_SPtoMem16(CPU *c);
-static void LD_Imm16toReg16(CPU *c, WORD *reg);
+// Calls
+static void CALL(CPU *c);
+static void CALL_cc(CPU *c, BYTE cond);
+// Returns
+static void RET(CPU *c);
+static void RET_cc(CPU *c, BYTE cond);
+static void RETI(CPU *c);
+// Reset
+static void RST(CPU *c, BYTE t);
+// 8-bit Loads
 static void LD_Imm8toReg8(CPU *c, BYTE *reg);
 static void LD_Imm8toMem8(CPU *c, WORD addr);
 static void LD_AtoMem8(CPU *c, WORD addr);
@@ -59,13 +74,13 @@ static void LDD_toA(CPU *c, WORD *addr);
 static void LD_Reg8toReg8(CPU *c, BYTE *reg1, BYTE *reg2);
 static void LD_Mem8toReg8(CPU *c, BYTE *reg, WORD addr);
 static void LD_Reg8toMem8(CPU *c, WORD addr, BYTE *reg);
-// ALU operations
-static void INC_Reg8(CPU *c, BYTE *reg);
-static void DEC_Reg8(CPU *c, BYTE *reg);
-static void INC_Reg16(CPU *c, WORD *reg);
-static void DEC_Reg16(CPU *c, WORD *reg);
-static void ADD_HL(CPU *c, WORD *reg);
-static void ADD_SP(CPU *c, SIGNED_BYTE displace);
+// 16-bit Loads
+static void LD_Imm16toReg16(CPU *c, WORD *reg);
+static void LD_SPtoMem16(CPU *c);
+static void LD_HLtoSP(CPU *c);
+static void LD_SPtoHL(CPU *c, SIGNED_BYTE displace);
+static void PUSH(CPU *c, REGISTER *reg);
+static void POP(CPU *c, REGISTER *reg);
 // 8-bit ALU (all of these operate on and store the result in A)
 static void ADDA_Reg8(CPU *c, BYTE *reg);
 static void ADDA_Mem8(CPU *c, WORD addr);
@@ -83,21 +98,43 @@ static void OR_Reg8(CPU *c, BYTE *reg);
 static void OR_Mem8(CPU *c, WORD addr);
 static void CP_Reg8(CPU *c, BYTE *reg);
 static void CP_Mem8(CPU *c, WORD addr);
+static void INC_Reg8(CPU *c, BYTE *reg);
+static void DEC_Reg8(CPU *c, BYTE *reg);
+// 16-bit ALU
+static void ADD_HL(CPU *c, WORD *reg);
+static void ADD_SP(CPU *c, SIGNED_BYTE displace);
+static void INC_Reg16(CPU *c, WORD *reg);
+static void DEC_Reg16(CPU *c, WORD *reg);
 // Rotates and shifts
-static void RLC(CPU *c, BYTE *reg);
-static void RRC(CPU *c, BYTE *reg);
-static void RL(CPU *c, BYTE *reg);
-static void RR(CPU *c, BYTE *reg);
-static void SL(CPU *c, BYTE *reg);
-static void SR(CPU *c, BYTE *reg);
-static void SWAP(CPU *c, BYTE *reg);
-static void SRL(CPU *c, BYTE *reg);
+static void RLC_Reg8(CPU *c, BYTE *reg);
+static void RLC_Mem8(CPU *c, WORD addr);
+static void RRC_Reg8(CPU *c, BYTE *reg);
+static void RRC_Mem8(CPU *c, WORD addr);
+static void RL_Reg8(CPU *c, BYTE *reg);
+static void RL_Mem8(CPU *c, WORD addr);
+static void RR_Reg8(CPU *c, BYTE *reg);
+static void RR_Mem8(CPU *c, WORD addr);
+static void SLA_Reg8(CPU *c, BYTE *reg);
+static void SLA_Mem8(CPU *c, WORD addr);
+static void SRA_Reg8(CPU *c, BYTE *reg);
+static void SRA_Mem8(CPU *c, WORD addr);
+static void SWAP_Reg8(CPU *c, BYTE *reg);
+static void SWAP_Mem8(CPU *c, WORD addr);
+static void SRL_Reg8(CPU *c, BYTE *reg);
+static void SRL_Mem8(CPU *c, WORD addr);
+// Bit Operations
+static void BIT_Reg8(CPU *c, int bit, BYTE *reg);
+static void BIT_Mem8(CPU *c, int bit, WORD addr);
+static void SET_Reg8(CPU *c, int bit, BYTE *reg);
+static void SET_Mem8(CPU *c, int bit, WORD addr);
+static void RES_Reg8(CPU *c, int bit, BYTE *reg);
+static void RES_Mem8(CPU *c, int bit, WORD addr);
 // Misc.
 static void DAA(CPU *c); // Convert A to packed BCD
 static void inline CPL(CPU *c); // Complement A
 static void CCF(CPU *c); // Complement carry flag
 static void SCF(CPU *c); // Set carry flag
-static void CD_Prefix(CPU *c);
+static void CB_Prefix(CPU *c);
 
 static const BYTE Z_FLAG = 0x80; // Zero flag
 static const BYTE N_FLAG = 0x40; // Subtract flag
@@ -307,16 +344,16 @@ static void Decode_X_0(CPU *c){
         case 7:
             switch(Y(c->ir)){
                 case 0: // RLCA
-                    RLC(c, &c->af.hi);
+                    RLC_Reg8(c, &c->af.hi);
                     break;
                 case 1: // RRCA
-                    RRC(c, &c->af.hi);
+                    RRC_Reg8(c, &c->af.hi);
                     break;
                 case 2: // RLA
-                    RL(c, &c->af.hi);
+                    RL_Reg8(c, &c->af.hi);
                     break;
                 case 3: // RRA
-                    RR(c, &c->af.hi);
+                    RR_Reg8(c, &c->af.hi);
                     break;
                 case 4: // DAA
                     DAA(c);
@@ -373,6 +410,19 @@ static void Decode_X_2(CPU *c){
     else{
         p_undef(c);
     }
+}
+
+static void Decode_X_3(CPU *c){
+    int y = Y(c->ir);
+    int z = Z(c->ir);
+    int p = P(c->ir);
+    int q = Q(c->ir);
+
+    switch(z){
+        case 0:
+
+            break;
+    };
 }
 
 static BYTE *deref_rTable(CPU *c, int index){
@@ -446,16 +496,30 @@ static ALU_OP_MEM deref_aluMemTable(int index){
     };
 }
 
-static ROT_OP deref_rotTable(int index){
+static ROT_OP_REG deref_rotRegTable(int index){
     switch(index){
-        case 0: return &RLC;
-        case 1: return &RRC;
-        case 2: return &RL;
-        case 3: return &RR;
-        case 4: return &SL;
-        case 5: return &SR;
-        case 6: return &SWAP;
-        case 7: return &SRL;
+        case 0: return &RLC_Reg8;
+        case 1: return &RRC_Reg8;
+        case 2: return &RL_Reg8;
+        case 3: return &RR_Reg8;
+        case 4: return &SLA_Reg8;
+        case 5: return &SRA_Reg8;
+        case 6: return &SWAP_Reg8;
+        case 7: return &SRL_Reg8;
+        default: return NULL;
+    };
+}
+
+static ROT_OP_MEM deref_rotMemTable(int index){
+    switch(index){
+        case 0: return &RLC_Mem8;
+        case 1: return &RRC_Mem8;
+        case 2: return &RL_Mem8;
+        case 3: return &RR_Mem8;
+        case 4: return &SLA_Mem8;
+        case 5: return &SRA_Mem8;
+        case 6: return &SWAP_Mem8;
+        case 7: return &SRL_Mem8;
         default: return NULL;
     };
 }
