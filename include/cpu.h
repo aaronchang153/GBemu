@@ -4,6 +4,11 @@
 #include "common.h"
 #include "memory.h"
 
+static const BYTE Z_FLAG = 0x80; // Zero flag
+static const BYTE N_FLAG = 0x40; // Subtract flag
+static const BYTE H_FLAG = 0x20; // Half-Carry flag
+static const BYTE C_FLAG = 0x10; // Carry flag
+
 typedef struct cpu CPU;
 typedef union reg REGISTER;
 
@@ -42,7 +47,7 @@ void CPU_Destroy(CPU *c);
 // Emulate a single instruction cycle
 void CPU_EmulateCycle(CPU *c);
 
-void CPU_DecodeExecute(CPU *c);
+void CPU_UpdateClockTimer(CPU *c, int n);
 
 static inline void CPU_SetFlag(CPU *c, BYTE flag) { c->af.lo |= flag; }
 
