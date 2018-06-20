@@ -1,5 +1,6 @@
 #include "cpu.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -24,25 +25,52 @@ static void Decode_X_1(CPU *c);
 static void Decode_X_2(CPU *c);
 static void Decode_X_3(CPU *c);
 
-typedef void (*ALU_OP)(CPU *c);
+static inline void p_undef(CPU *c) { printf("Undefined opcode %x\n", c->ir); }
+
+typedef void (*ALU_OP)(CPU*, BYTE*, BYTE);
+typedef void (*ROT_OP)(CPU*, BYTE*);
 
 static BYTE *deref_rTable(CPU *c, int index);
 static WORD *deref_rpTable(CPU *c, int index);
 static WORD *deref_rp2Table(CPU *c, int index);
 static BYTE deref_ccTable(int index);
 static ALU_OP deref_aluTable(int index);
-static ALU_OP deref_rotTable(int index);
+static ROT_OP deref_rotTable(int index);
 
 static void NOP(CPU *c);
 static void STOP(CPU *c);
+// Jumps
 static void JR(CPU *c);
 static void JR_cc(CPU *c, BYTE cond);
+// Loads
 static void LD_toMem8(CPU *c, WORD addr, BYTE data);
 static void LD_toReg8(CPU *c, BYTE *reg, BYTE data);
 static void LD_toMem16(CPU *c, WORD addr, WORD data);
 static void LD_toReg16(CPU *c, WORD *reg, WORD data);
+// ALU operations
+static void ADD_toReg8(CPU *c, BYTE *reg, BYTE data);
+static void ADC_toReg8(CPU *c, BYTE *reg, BYTE data);
+static void SUB_toReg8(CPU *c, BYTE *reg, BYTE data);
+static void SBC_toReg8(CPU *c, BYTE *reg, BYTE data);
+static void AND(CPU *c, BYTE* reg, BYTE data);
+static void XOR(CPU *c, BYTE* reg, BYTE data);
+static void OR(CPU *c, BYTE* reg, BYTE data);
+static void CP(CPU *c, BYTE* reg, BYTE data); // compare reg and data
 static void INC_Reg8(CPU *c, BYTE *reg);
 static void DEC_Reg8(CPU *c, BYTE *reg);
+static void INC_Reg16(CPU *c, BYTE *reg);
+static void DEC_Reg16(CPU *c, BYTE *reg);
+static void ADD_HL(CPU *c, WORD *reg);
+static void ADD_SP(CPU *c, SIGNED_BYTE displace);
+// Rotates and shifts
+static void RLC(CPU *c, BYTE *reg);
+static void RRC(CPU *c, BYTE *reg);
+static void RL(CPU *c, BYTE *reg);
+static void RR(CPU *c, BYTE *reg);
+static void SL(CPU *c, BYTE *reg);
+static void SR(CPU *c, BYTE *reg);
+static void SWAP(CPU *c, BYTE *reg);
+static void SRL(CPU *c, BYTE *reg);
 
 static const BYTE Z_FLAG = 0x80; // Zero flag
 static const BYTE N_FLAG = 0x40; // Subtract flag
@@ -100,14 +128,183 @@ void CPU_DecodeExecute(CPU *c){
             Decode_X_3(c);
             break;
         default:
-            printf("Undefined opcode %x\n", c->ir);
+            p_undef(c);
     };
 }
 
 static void Decode_X_0(CPU *c){
     switch(Z(c->ir)){
         case 0:
+            switch(Y(c->ir)){
+                case 0: // NOP
+                    NOP(c);
+                    break;
+                case 1: // LD (nn),SP
+                    LD_toMem16(c, Mem_ReadWord(c->memory, c->pc+1), c->sp);
+                    break;
+                case 2: // STOP
+                    STOP(c);
+                    break;
+                case 3: // JR d
+                    JR(c);
+                    break;
+                case 4:
+                case 5:
+                case 6:
+                case 7: // JR cc[y-4],d
+                    JR_cc(c, deref_ccTable((Y(c->ir)) - 4));
+                    break;
+                default:
+                    p_undef(c);
+            };
             break;
+        case 1:
+            switch(Q(c->ir)){
+                case 0: // LD rp[p],nn
+                    LD_toReg16(c, deref_rpTable(c, P(c->ir)), Mem_ReadWord(c->memory, c->pc+1));
+                    break;
+                case 1: // ADD HL,rp[p]
+                    ADD_HL(c, deref_rpTable(c, P(c->ir)));
+                    break;
+                default:
+                    p_undef(c);
+            };
+            break;
+        case 2:
+            switch(Q(c->ir)){
+                case 0:
+                    switch(P(c->ir)){
+                        case 0: // LD (BC),A
+                            LD_toMem8(c, c->bc.reg, c->af.hi);
+                            break;
+                        case 1: // LD (DE),A
+                            LD_toMem8(c, c->de.reg, c->af.hi);
+                            break;
+                        case 2: // LD (HL+),A
+                            LD_toMem16(c, c->hl.reg, c->af.hi);
+                            Mem_IncByte(c->memory, c->hl.reg);
+                            break;
+                        case 3: // LD (HL-),A
+                            LD_toMem16(c, c->hl.reg, c->af.hi);
+                            Mem_DecByte(c->memory, c->hl.reg);
+                            break;
+                        default:
+                            p_undef(c);
+                    };
+                    break;
+                case 1:
+                    switch(P(c->ir)){
+                        case 0: // LD A,(BC)
+                            LD_toReg8(c, &c->af.hi, Mem_ReadByte(c->memory, c->bc.reg));
+                            break;
+                        case 1: // LD A,(DE)
+                            LD_toReg8(c, &c->af.hi, Mem_ReadByte(c->memory, c->de.reg));
+                            break;
+                        case 2: // LD A,(HL+)
+                            LD_toReg8(c, &c->af.hi, Mem_ReadByte(c->memory, c->hl.reg));
+                            Mem_IncByte(c->memory, c->hl.reg);
+                            break;
+                        case 3: // LD A,(HL-)
+                            LD_toReg8(c, &c->af.hi, Mem_ReadByte(c->memory, c->hl.reg));
+                            Mem_DecByte(c->memory, c->hl.reg);
+                            break;
+                        default:
+                            p_undef(c);
+                    };
+                    break;
+                default:
+                    p_undef(c);
+            };
+            break;
+        case 3:
+            switch(Q(c->ir)){
+                case 0: // INC rp[p]
+                    INC_Reg16(c, deref_rpTable(c, P(c->ir)));
+                    break;
+                case 1: // DEC rp[p]
+                    DEC_Reg16(c, deref_rpTable(c, P(c->ir)));
+                    break;
+                default:
+                    p_undef(c);
+            };
+            break;
+        case 4: // INC r[y]
+            switch(Y(c->ir)){
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                case 7:
+                    INC_Reg8(c, deref_rTable(c, Y(c->ir)));
+                    break;
+                case 6:
+                    Mem_IncByte(c->memory, c->hl.reg);
+                    break;
+                default:
+                    p_undef(c);
+            };
+            break;
+        case 5: // DEC r[y]
+            switch(Y(c->ir)){
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                case 7:
+                    DEC_Reg8(c, deref_rTable(c, Y(c->ir)));
+                    break;
+                case 6:
+                    Mem_DecByte(c->memory, c->hl.reg);
+                    break;
+                default:
+                    p_undef(c);
+            };
+        case 6: // LD r[y],n
+            switch(Y(c->ir)){
+                case 0:
+                case 1:
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                case 7:
+                    LD_toReg8(c, deref_rTable(c, Y(c->ir)), Mem_ReadByte(c->memory, c->pc+1));
+                    break;
+                case 6:
+                    LD_toMem8(c, c->hl.reg, Mem_ReadByte(c->memory, c->pc+1));
+                    break;
+                default:
+                    p_undef(c);
+            };
+            break;
+        case 7:
+            switch(Y(c->ir)){
+                case 0: // RLCA
+                    break;
+                case 1: // RRCA
+                    break;
+                case 2: // RLA
+                    break;
+                case 3: // RRA
+                    break;
+                case 4: // DAA
+                    break;
+                case 5: // CPL
+                    break;
+                case 6: // SCF
+                    break;
+                case 7: // CCF
+                    break;
+                default:
+                    p_undef(c);
+            };
+            break;
+        default:
+            p_undef(c);
     };
 }
 
@@ -144,11 +341,43 @@ static WORD *deref_rp2Table(CPU *c, int index){
     };
 }
 
-static BYTE deref_ccTable(int index);
+static BYTE deref_ccTable(int index){
+    switch(index){
+        case 0: return N_FLAG | Z_FLAG;
+        case 1: return Z_FLAG;
+        case 2: return N_FLAG | C_FLAG;
+        case 3: return C_FLAG;
+        default: return 0;
+    };
+}
 
-static ALU_OP deref_aluTable(int index);
+static ALU_OP deref_aluTable(int index){
+    switch(index){
+        case 0: return &ADD_toReg8;
+        case 1: return &ADC_toReg8;
+        case 2: return &SUB_toReg8;
+        case 3: return &SBC_toReg8;
+        case 4: return &AND;
+        case 5: return &XOR;
+        case 6: return &OR;
+        case 7: return &CP;
+        default: return NULL;
+    };
+}
 
-static ALU_OP deref_rotTable(int index);
+static ROT_OP deref_rotTable(int index){
+    switch(index){
+        case 0: return &RLC;
+        case 1: return &RRC;
+        case 2: return &RL;
+        case 3: return &RR;
+        case 4: return &SL;
+        case 5: return &SR;
+        case 6: return &SWAP;
+        case 7: return &SRL;
+        default: return NULL;
+    };
+}
 
 static void INC_Reg8(CPU *c, BYTE *reg){
     if((*reg & 0x0F) == 0x0F)
