@@ -37,10 +37,7 @@ struct cpu{
 
 CPU *CPU_Create();
 
-/*
- * Bootstrap handles initialization of the CPU
- * void CPU_Init(CPU *c);
-*/
+void CPU_Init(CPU *c);
 
 void CPU_Destroy(CPU *c);
 
@@ -50,10 +47,6 @@ void CPU_EmulateCycle(CPU *c);
 void CPU_UpdateClockTimer(CPU *c, int cycles);
 
 void CPU_SetInterrupt(CPU *c, bool e);
-
-/*
-static inline void CPU_SetFlag(CPU *c, BYTE flag) { c->af.lo |= flag; }
-*/
 
 static inline void CPU_SetFlag(CPU *c, BYTE flag, bool value) { c->af.lo = (value) ? (c->af.lo | flag) : (c->af.lo & (~flag)); }
 
