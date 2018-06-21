@@ -18,7 +18,7 @@ void Mem_Destroy(MEMORY *mem);
 
 void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data);
 
-void Mem_WriteWord(MEMORY *mem, WORD addr, WORD data);
+//void Mem_WriteWord(MEMORY *mem, WORD addr, WORD data);
 
 BYTE Mem_ReadByte(MEMORY *mem, WORD addr);
 
