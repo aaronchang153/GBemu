@@ -19,7 +19,7 @@ static inline bool HALF_CARRY_SUB(BYTE a, BYTE b) { return (a & 0x0F) < (b & 0x0
 static inline bool CARRY_SUB(BYTE a, BYTE b) { return a < b; }
 
 static inline bool HALF_CARRY_ADD16(WORD a, WORD b) { return (((a & 0x0FFF) + (b & 0x0FFF)) & 0xF000) == 0x1000; }
-static inline bool CARRY_ADD16(WORD a, WORD b) { return (((uint32_t) a + (uint32_t) b) & 0xF000) == 0x10000; }
+static inline bool CARRY_ADD16(WORD a, WORD b) { return (((uint32_t) a + (uint32_t) b) & 0xF0000) == 0x10000; }
 
 
 // Control
@@ -295,6 +295,7 @@ void LD_SPtoHL(CPU *c){
 void PUSH(CPU *c, WORD *reg){
     Mem_WriteByte(c->memory, c->sp - 1, HI(*reg));
     Mem_WriteByte(c->memory, c->sp - 2, LO(*reg));
+    c->sp -= 2;
     c->pc++;
     CPU_UpdateClockTimer(c, CYCLES(4));
 }
