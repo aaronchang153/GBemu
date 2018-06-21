@@ -47,7 +47,9 @@ void CPU_Destroy(CPU *c);
 // Emulate a single instruction cycle
 void CPU_EmulateCycle(CPU *c);
 
-void CPU_UpdateClockTimer(CPU *c, int n);
+void CPU_UpdateClockTimer(CPU *c, int cycles);
+
+void CPU_SetInterrupt(CPU *c, char e);
 
 static inline void CPU_SetFlag(CPU *c, BYTE flag) { c->af.lo |= flag; }
 
