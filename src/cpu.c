@@ -18,15 +18,12 @@ CPU *CPU_Create(){
     return cpu;
 }
 
-// Initialization handled by bootstrap program
-
-/*
 void CPU_Init(CPU *c){
     if(c != NULL){
+        // Still needs to do a lot more
         c->sp = 0xFFFE;
     }
 }
-*/
 
 void CPU_Destroy(CPU *c){
     if(c != NULL){
