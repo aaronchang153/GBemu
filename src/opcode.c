@@ -4,11 +4,23 @@
 
 #define CYCLES(n) 4 * n
 
+typedef unsigned int uint32_t;
+
 static inline BYTE HI(WORD w) { return (BYTE) ((w & 0xFF00) >> 8); }
 static inline BYTE LO(WORD w) { return (BYTE)  (w & 0x00FF); }
 
 static inline BYTE IMM8(CPU *c) { return Mem_ReadByte(c->memory, c->pc+1); }
 static inline WORD IMM16(CPU *c) { return Mem_ReadWord(c->memory, c->pc+1); }
+
+static inline bool HALF_CARRY_ADD(BYTE a, BYTE b) { return (((a & 0x0F) + (b & 0x0F)) & 0xF0) == 0x10; }
+static inline bool CARRY_ADD(BYTE a, BYTE b) { return (((WORD) a + (WORD) b) & 0xFF00) == 0x0100; }
+
+static inline bool HALF_CARRY_SUB(BYTE a, BYTE b) { return (a & 0x0F) < (b & 0x0F); }
+static inline bool CARRY_SUB(BYTE a, BYTE b) { return a < b; }
+
+static inline bool HALF_CARRY_ADD16(WORD a, WORD b) { return (((a & 0x0FFF) + (b & 0x0FFF)) & 0xF000) == 0x1000; }
+static inline bool CARRY_ADD16(WORD a, WORD b) { return (((uint32_t) a + (uint32_t) b) & 0xF000) == 0x10000; }
+
 
 // Control
 void NOP(CPU *c){
@@ -258,18 +270,19 @@ void LD_HLtoSP(CPU *c){
 }
 
 void LD_SPtoHL(CPU *c){
+    // e MAY NEED TO BE SIGNED + SIGN EXTENDED
     BYTE e = IMM8(c);
     CPU_ClearFlag(c, Z_FLAG | N_FLAG);
     if(((c->sp & 0x0FFF) + (WORD) e) == 0x1000){
         // Set H if there's a carry from bit 11
-        CPU_SetFlag(c, H_FLAG);
+        CPU_SetFlag(c, H_FLAG, true);
     }
     else{
         CPU_ClearFlag(c, H_FLAG);
     }
     if((((unsigned int) c->sp) + (unsigned int) e) == 0x10000){
         // Set C if there's a carry from bit 15
-        CPU_SetFlag(c, C_FLAG);
+        CPU_SetFlag(c, C_FLAG, true);
     }
     else{
         CPU_ClearFlag(c, C_FLAG);
@@ -294,29 +307,358 @@ void POP(CPU *c, WORD *reg){
 }
 
 // 8-bit ALU (all of these operate on and store the result in A)
-void ADDA_Reg8(CPU *c, BYTE *reg);
-void ADDA_Mem8(CPU *c, WORD addr);
-void ADCA_Reg8(CPU *c, BYTE *reg);
-void ADCA_Mem8(CPU *c, WORD addr);
-void SUB_Reg8(CPU *c, BYTE *reg);
-void SUB_Mem8(CPU *c, WORD addr);
-void SBC_Reg8(CPU *c, BYTE *reg);
-void SBC_Mem8(CPU *c, WORD addr);
-void AND_Reg8(CPU *c, BYTE *reg);
-void AND_Mem8(CPU *c, WORD addr);
-void XOR_Reg8(CPU *c, BYTE *reg);
-void XOR_Mem8(CPU *c, WORD addr);
-void OR_Reg8(CPU *c, BYTE *reg);
-void OR_Mem8(CPU *c, WORD addr);
-void CP_Reg8(CPU *c, BYTE *reg);
-void CP_Mem8(CPU *c, WORD addr);
-void INC_Reg8(CPU *c, BYTE *reg);
-void DEC_Reg8(CPU *c, BYTE *reg);
+void ADDA_Reg8(CPU *c, BYTE *reg){
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD(c->af.hi, *reg));
+    CPU_SetFlag(c, C_FLAG, CARRY_ADD(c->af.hi, *reg));
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi += *reg) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void ADDA_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD(c->af.hi, data));
+    CPU_SetFlag(c, C_FLAG, CARRY_ADD(c->af.hi, data));
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi += data) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void ADDA_Imm8(CPU *c){
+    BYTE data = IMM8(c);
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD(c->af.hi, data));
+    CPU_SetFlag(c, C_FLAG, CARRY_ADD(c->af.hi, data));
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi += data) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void ADCA_Reg8(CPU *c, BYTE *reg){
+    bool cy = CPU_CheckFlag(c, C_FLAG);
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD(c->af.hi, *reg));
+    CPU_SetFlag(c, C_FLAG, CARRY_ADD(c->af.hi, *reg));
+    c->af.hi += *reg;
+    if(cy){
+        if(HALF_CARRY_ADD(c->af.hi, 1)){
+            CPU_SetFlag(c, H_FLAG, true);
+        }
+        if(CARRY_ADD(c->af.hi, 1)){
+            CPU_SetFlag(c, C_FLAG, true);
+        }
+        c->af.hi++;
+    }
+    CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void ADCA_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    bool cy = CPU_CheckFlag(c, C_FLAG);
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD(c->af.hi, data));
+    CPU_SetFlag(c, C_FLAG, CARRY_ADD(c->af.hi, data));
+    c->af.hi += data;
+    if(cy){
+        if(HALF_CARRY_ADD(c->af.hi, 1)){
+            CPU_SetFlag(c, H_FLAG, true);
+        }
+        if(CARRY_ADD(c->af.hi, 1)){
+            CPU_SetFlag(c, C_FLAG, true);
+        }
+        c->af.hi++;
+    }
+    CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void ADCA_Imm8(CPU *c){
+    BYTE data = IMM8(c);
+    bool cy = CPU_CheckFlag(c, C_FLAG);
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD(c->af.hi, data));
+    CPU_SetFlag(c, C_FLAG, CARRY_ADD(c->af.hi, data));
+    c->af.hi += data;
+    if(cy){
+        if(HALF_CARRY_ADD(c->af.hi, 1)){
+            CPU_SetFlag(c, H_FLAG, true);
+        }
+        if(CARRY_ADD(c->af.hi, 1)){
+            CPU_SetFlag(c, C_FLAG, true);
+        }
+        c->af.hi++;
+    }
+    CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void SUB_Reg8(CPU *c, BYTE *reg){
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(c->af.hi, *reg));
+    CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, *reg));
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi -= *reg) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void SUB_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(c->af.hi, data));
+    CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, data));
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi -= data) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void SUB_Imm8(CPU *c){
+    BYTE data = IMM8(c);
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(c->af.hi, data));
+    CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, data));
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi -= data) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void SBC_Reg8(CPU *c, BYTE *reg){
+    bool cy = CPU_CheckFlag(c, C_FLAG);
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(c->af.hi, *reg));
+    CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, *reg));
+    c->af.hi -= *reg;
+    if(cy){
+        if(HALF_CARRY_SUB(c->af.hi, 1)){
+            CPU_SetFlag(c, H_FLAG, true);
+        }
+        if(CARRY_SUB(c->af.hi, 1)){
+            CPU_SetFlag(c, C_FLAG, true);
+        }
+        c->af.hi--;
+    }
+    CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void SBC_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    bool cy = CPU_CheckFlag(c, C_FLAG);
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(c->af.hi, data));
+    CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, data));
+    c->af.hi -= data;
+    if(cy){
+        if(HALF_CARRY_SUB(c->af.hi, 1)){
+            CPU_SetFlag(c, H_FLAG, true);
+        }
+        if(CARRY_SUB(c->af.hi, 1)){
+            CPU_SetFlag(c, C_FLAG, true);
+        }
+        c->af.hi--;
+    }
+    CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void SBC_Imm8(CPU *c){
+    BYTE data = IMM8(c);
+    bool cy = CPU_CheckFlag(c, C_FLAG);
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(c->af.hi, data));
+    CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, data));
+    c->af.hi -= data;
+    if(cy){
+        if(HALF_CARRY_SUB(c->af.hi, 1)){
+            CPU_SetFlag(c, H_FLAG, true);
+        }
+        if(CARRY_SUB(c->af.hi, 1)){
+            CPU_SetFlag(c, C_FLAG, true);
+        }
+        c->af.hi--;
+    }
+    CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void AND_Reg8(CPU *c, BYTE *reg){
+    CPU_ClearFlag(c, C_FLAG | N_FLAG);
+    CPU_SetFlag(c, H_FLAG, true);
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi &= *reg) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void AND_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_ClearFlag(c, C_FLAG | N_FLAG);
+    CPU_SetFlag(c, H_FLAG, true);
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi &= data) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void AND_Imm8(CPU *c){
+    BYTE data = IMM8(c);
+    CPU_ClearFlag(c, C_FLAG | N_FLAG);
+    CPU_SetFlag(c, H_FLAG, true);
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi &= data) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void XOR_Reg8(CPU *c, BYTE *reg){
+    CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi ^= *reg) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void XOR_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi ^= data) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void XOR_Imm8(CPU *c){
+    BYTE data = IMM8(c);
+    CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi ^= data) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void OR_Reg8(CPU *c, BYTE *reg){
+    CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi |= *reg) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void OR_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi |= data) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void OR_Imm8(CPU *c){
+    BYTE data = IMM8(c);
+    CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
+    CPU_SetFlag(c, Z_FLAG, (c->af.hi |= data) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void CP_Reg8(CPU *c, BYTE *reg){
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, c->af.hi < *reg);
+    CPU_SetFlag(c, Z_FLAG, c->af.hi == *reg);
+    CPU_SetFlag(c, C_FLAG, c->af.hi > *reg);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void CP_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, c->af.hi < data);
+    CPU_SetFlag(c, Z_FLAG, c->af.hi == data);
+    CPU_SetFlag(c, C_FLAG, c->af.hi > data);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void CP_Imm8(CPU *c){
+    BYTE data = IMM8(c);
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, c->af.hi < data);
+    CPU_SetFlag(c, Z_FLAG, c->af.hi == data);
+    CPU_SetFlag(c, C_FLAG, c->af.hi > data);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void INC_Reg8(CPU *c, BYTE *reg){
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD(*reg, 1));
+    CPU_SetFlag(c, Z_FLAG, ++(*reg) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void INC_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD(data, 1));
+    CPU_SetFlag(c, Z_FLAG, ++data == 0);
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(3));
+}
+
+void DEC_Reg8(CPU *c, BYTE *reg){
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(*reg, 1));
+    CPU_SetFlag(c, Z_FLAG, --(*reg) == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void DEC_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_SetFlag(c, N_FLAG, true);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(data, 1));
+    CPU_SetFlag(c, Z_FLAG, --data == 0);
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(3));
+}
+
 // 16-bit ALU
-void ADD_HL(CPU *c, WORD *reg);
-void ADD_SP(CPU *c);
-void INC_Reg16(CPU *c, WORD *reg);
-void DEC_Reg16(CPU *c, WORD *reg);
+void ADD_HL(CPU *c, WORD *reg){
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD16(c->hl.reg, *reg));
+    CPU_SetFlag(c, C_FLAG, CARRY_ADD16(c->hl.reg, *reg));
+    c->hl.reg += (*reg);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void ADD_SP(CPU *c){
+    // DATA MAY NEED TO BE SIGNED AND SIGN EXTENDED
+    BYTE data = IMM8(c);
+    CPU_ClearFlag(c, N_FLAG | Z_FLAG);
+    CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD16(c->sp, (WORD) data));
+    CPU_SetFlag(c, C_FLAG, CARRY_ADD16(c->sp, (WORD) data));
+    c->sp += (SIGNED_WORD) data;
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
+void INC_Reg16(CPU *c, WORD *reg){
+    (*reg)++;
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void DEC_Reg16(CPU *c, WORD *reg){
+    (*reg)--;
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
 // Rotates and shifts
 void RLCA(CPU *c);
 void RLA(CPU *c);
