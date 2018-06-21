@@ -1,6 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <stdbool.h>
 
 typedef unsigned char BYTE;
 typedef char SIGNED_BYTE;
