@@ -25,6 +25,7 @@ static inline void p_undef(CPU *c) { printf("Undefined opcode %x\n", c->ir); }
 
 typedef void (*ALU_OP_REG)(CPU*, BYTE*);
 typedef void (*ALU_OP_MEM)(CPU*, WORD);
+typedef void (*ALU_OP_IMM)(CPU*);
 typedef void (*ROT_OP_REG)(CPU*, BYTE*);
 typedef void (*ROT_OP_MEM)(CPU*, WORD);
 
@@ -34,6 +35,7 @@ WORD *deref_rp2Table(CPU *c, int index);
 BYTE deref_ccTable(int index);
 ALU_OP_REG deref_aluRegTable(int index);
 ALU_OP_MEM deref_aluMemTable(int index);
+ALU_OP_IMM deref_aluImmTable(int index);
 ROT_OP_REG deref_rotRegTable(int index);
 ROT_OP_MEM deref_rotMemTable(int index);
 
