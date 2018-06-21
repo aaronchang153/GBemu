@@ -66,16 +66,16 @@ void Decode_X_0(CPU *c){
                 case 0:
                     switch(P(c->ir)){
                         case 0: // LD (BC),A
-                            LD_AtoMem8(c, c->bc.reg);
+                            LD_AtoMem8_addr(c, c->bc.reg);
                             break;
                         case 1: // LD (DE),A
-                            LD_AtoMem8(c, c->de.reg);
+                            LD_AtoMem8_addr(c, c->de.reg);
                             break;
                         case 2: // LD (HL+),A
-                            LDI_toMem8(c, &c->hl.reg);
+                            LDI_toMem8(c);
                             break;
                         case 3: // LD (HL-),A
-                            LDD_toMem8(c, &c->hl.reg);
+                            LDD_toMem8(c);
                             break;
                         default:
                             p_undef(c);
@@ -84,16 +84,16 @@ void Decode_X_0(CPU *c){
                 case 1:
                     switch(P(c->ir)){
                         case 0: // LD A,(BC)
-                            LD_Mem8toA(c, c->bc.reg);
+                            LD_Mem8toA_addr(c, c->bc.reg);
                             break;
                         case 1: // LD A,(DE)
-                            LD_Mem8toA(c, c->de.reg);
+                            LD_Mem8toA_addr(c, c->de.reg);
                             break;
                         case 2: // LD A,(HL+)
-                            LDI_toA(c, &c->hl.reg);
+                            LDI_toA(c);
                             break;
                         case 3: // LD A,(HL-)
-                            LDD_toA(c, &c->hl.reg);
+                            LDD_toA(c);
                             break;
                         default:
                             p_undef(c);
@@ -211,11 +211,11 @@ void Decode_X_1(CPU *c){
     }
     else{ // LD r[y],r[z]
         if(z == 6){
-            LD_Mem8toReg8(c, deref_rTable(c, y), c->hl.reg);
+            LD_Mem8toReg8_addr(c, deref_rTable(c, y), c->hl.reg);
         }
         else{
             if(y == 6){
-                LD_Reg8toMem8(c, c->hl.reg, deref_rTable(c, z));
+                LD_Reg8toMem8_addr(c, c->hl.reg, deref_rTable(c, z));
             }
             else{
                 LD_Reg8toReg8(c, deref_rTable(c, y), deref_rTable(c, z));
@@ -309,13 +309,13 @@ void Decode_X_3(CPU *c){
                     LD_AtoC(c);
                     break;
                 case 5: // LD (nn),A
-                    LD_AtoMem8(c, Mem_ReadWord(c->memory, c->pc+1));
+                    LD_AtoMem8_imm(c);
                     break;
                 case 6: // LD A,(0xFF00 + C)
                     LD_CtoA(c);
                     break;
                 case 7: // LD A,(nn)
-                    LD_Mem8toA(c, Mem_ReadWord(c->memory, c->pc+1));
+                    LD_Mem8toA_imm(c);
                     break;
                 default:
                     p_undef(c);
@@ -515,7 +515,7 @@ void INC_Reg8(CPU *c, BYTE *reg){
         CPU_SetFlag(c, H_FLAG);
     else
         CPU_ClearFlag(c, H_FLAG);
-    *reg++;
+    (*reg)++;
     if(*reg == 0)
         CPU_SetFlag(c, Z_FLAG);
     else
@@ -528,7 +528,7 @@ void DEC_Reg8(CPU *c, BYTE *reg){
         CPU_SetFlag(c, H_FLAG);
     else
         CPU_ClearFlag(c, H_FLAG);
-    *reg--;
+    (*reg)--;
     if(*reg == 0)
         CPU_SetFlag(c, Z_FLAG);
     else
