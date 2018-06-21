@@ -28,12 +28,14 @@ void RST(CPU *c);
 // 8-bit Loads
 void LD_Imm8toReg8(CPU *c, BYTE *reg);
 void LD_Imm8toMem8(CPU *c, WORD addr);
-void LD_AtoMem8(CPU *c, WORD addr);
-void LD_Mem8toA(CPU *c, WORD addr);
-void LDI_toMem8(CPU *c, WORD *addr);
-void LDI_toA(CPU *c, WORD *addr);
-void LDD_toMem8(CPU *c, WORD *addr);
-void LDD_toA(CPU *c, WORD *addr);
+void LD_AtoMem8_addr(CPU *c, WORD addr);
+void LD_AtoMem8_imm(CPU *c);
+void LD_Mem8toA_addr(CPU *c, WORD addr);
+void LD_Mem8toA_imm(CPU *c);
+void LDI_toMem8(CPU *c);
+void LDI_toA(CPU *c);
+void LDD_toMem8(CPU *c);
+void LDD_toA(CPU *c);
 void LD_Reg8toReg8(CPU *c, BYTE *reg1, BYTE *reg2);
 void LD_Mem8toReg8_addr(CPU *c, BYTE *reg, WORD addr);
 void LD_Mem8toReg8_imm(CPU *c, BYTE *reg);
@@ -107,6 +109,5 @@ void DAA(CPU *c); // Convert A to packed BCD
 void CPL(CPU *c); // Complement A
 void CCF(CPU *c); // Complement carry flag
 void SCF(CPU *c); // Set carry flag
-void CB_Prefix(CPU *c);
 
 #endif // OPCODE_H
