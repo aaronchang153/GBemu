@@ -287,7 +287,7 @@ void PUSH(CPU *c, WORD *reg){
 }
 
 void POP(CPU *c, WORD *reg){
-    *reg = ((WORD) Mem_ReadByte(c->memory, c->sp + 1) << 8) + Mem_ReadByte(c->memory, c->sp);
+    *reg = Mem_ReadWord(c->memory, c->sp);
     c->sp += 2;
     c->pc++;
     CPU_UpdateClockTimer(c, CYCLES(3));
