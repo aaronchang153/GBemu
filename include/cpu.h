@@ -28,8 +28,8 @@ struct cpu{
     REGISTER bc;
     REGISTER de;
     REGISTER hl;
-    char halted;
-    char interrupt_enable;
+    bool halted;
+    bool interrupt_enable;
     unsigned int clk_timer;
 
     MEMORY *memory;
@@ -49,12 +49,16 @@ void CPU_EmulateCycle(CPU *c);
 
 void CPU_UpdateClockTimer(CPU *c, int cycles);
 
-void CPU_SetInterrupt(CPU *c, char e);
+void CPU_SetInterrupt(CPU *c, bool e);
 
+/*
 static inline void CPU_SetFlag(CPU *c, BYTE flag) { c->af.lo |= flag; }
+*/
+
+void CPU_SetFlag(CPU *c, BYTE flag, bool value);
 
 static inline void CPU_ClearFlag(CPU *c, BYTE flag) { c->af.lo &= (~flag); }
 
-static inline char CPU_CheckFlag(CPU *c, BYTE cond) { return (c->af.lo & cond) == cond; }
+static inline bool CPU_CheckFlag(CPU *c, BYTE cond) { return (c->af.lo & cond) == cond; }
 
 #endif // CPU_H
