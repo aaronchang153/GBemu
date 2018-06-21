@@ -39,12 +39,3 @@ void CPU_EmulateCycle(CPU *c){
     c->ir = Mem_ReadByte(c->memory, c->pc);
     Decode_Execute(c);
 }
-
-void CPU_SetFlag(CPU *c, BYTE flag, bool value){
-    if(value == true){
-        c->af.lo |= flag;
-    }
-    else{
-        c->af.lo &= (~flag);
-    }
-}
