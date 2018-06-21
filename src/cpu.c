@@ -1,5 +1,5 @@
 #include "cpu.h"
-#include "opcode.h"
+#include "decode.h"
 
 #include <stdlib.h>
 #include <string.h>
