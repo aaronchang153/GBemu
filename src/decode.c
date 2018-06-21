@@ -127,7 +127,7 @@ void Decode_X_0(CPU *c){
                     INC_Reg8(c, deref_rTable(c, Y(c->ir)));
                     break;
                 case 6:
-                    Mem_IncByte(c->memory, c->hl.reg);
+                    INC_Mem8(c, c->hl.reg);
                     break;
                 default:
                     p_undef(c);
@@ -145,7 +145,7 @@ void Decode_X_0(CPU *c){
                     DEC_Reg8(c, deref_rTable(c, Y(c->ir)));
                     break;
                 case 6:
-                    Mem_DecByte(c->memory, c->hl.reg);
+                    DEC_Mem8(c, c->hl.reg);
                     break;
                 default:
                     p_undef(c);
@@ -359,7 +359,7 @@ void Decode_X_3(CPU *c){
             }
             break;
         case 6: // alu[y] n
-            deref_aluMemTable(y)(c, Mem_ReadByte(c->memory, c->pc+1));
+            deref_aluImmTable(y)(c);
             break;
         case 7: // RST t
             RST(c);
@@ -482,6 +482,20 @@ ALU_OP_MEM deref_aluMemTable(int index){
     };
 }
 
+ALU_OP_IMM deref_aluImmTable(int index){
+    switch(index){
+        case 0: return &ADDA_Imm8;
+        case 1: return &ADCA_Imm8;
+        case 2: return &SUB_Imm8;
+        case 3: return &SBC_Imm8;
+        case 4: return &AND_Imm8;
+        case 5: return &XOR_Imm8;
+        case 6: return &OR_Imm8;
+        case 7: return &CP_Imm8;
+        default: return NULL;
+    };
+}
+
 ROT_OP_REG deref_rotRegTable(int index){
     switch(index){
         case 0: return &RLC_Reg8;
@@ -508,30 +522,4 @@ ROT_OP_MEM deref_rotMemTable(int index){
         case 7: return &SRL_Mem8;
         default: return NULL;
     };
-}
-
-void INC_Reg8(CPU *c, BYTE *reg){
-    if((*reg & 0x0F) == 0x0F)
-        CPU_SetFlag(c, H_FLAG);
-    else
-        CPU_ClearFlag(c, H_FLAG);
-    (*reg)++;
-    if(*reg == 0)
-        CPU_SetFlag(c, Z_FLAG);
-    else
-        CPU_ClearFlag(c, Z_FLAG);
-    CPU_ClearFlag(c, N_FLAG);
-}
-
-void DEC_Reg8(CPU *c, BYTE *reg){
-    if((*reg & 0x0F) == 0)
-        CPU_SetFlag(c, H_FLAG);
-    else
-        CPU_ClearFlag(c, H_FLAG);
-    (*reg)--;
-    if(*reg == 0)
-        CPU_SetFlag(c, Z_FLAG);
-    else
-        CPU_ClearFlag(c, Z_FLAG);
-    CPU_SetFlag(c, N_FLAG);
 }
