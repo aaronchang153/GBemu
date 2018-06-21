@@ -38,9 +38,9 @@ void LDD_toMem8(CPU *c);
 void LDD_toA(CPU *c);
 void LD_Reg8toReg8(CPU *c, BYTE *reg1, BYTE *reg2);
 void LD_Mem8toReg8_addr(CPU *c, BYTE *reg, WORD addr);
-void LD_Mem8toReg8_imm(CPU *c, BYTE *reg);
+// void LD_Mem8toReg8_imm(CPU *c, BYTE *reg); >> I don't think this one is actually needed
 void LD_Reg8toMem8_addr(CPU *c, WORD addr, BYTE *reg);
-void LD_Reg8toMem8_imm(CPU *c, BYTE *reg);
+// void LD_Reg8toMem8_imm(CPU *c, BYTE *reg); >> This one isn't needed either
 void LD_CtoA(CPU *c);
 void LD_AtoC(CPU *c);
 void LDH_NtoA(CPU *c);
