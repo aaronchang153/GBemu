@@ -36,3 +36,11 @@ void CPU_EmulateCycle(CPU *c){
     c->ir = Mem_ReadByte(c->memory, c->pc);
     Decode_Execute(c);
 }
+
+void CPU_UpdateClockTimer(CPU *c, int cycles){
+
+}
+
+void CPU_SetInterrupt(CPU *c, bool e){
+
+}

@@ -55,3 +55,23 @@ void Mem_Destroy(MEMORY *mem){
         free(mem);
     }
 }
+
+void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
+
+}
+
+BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
+
+}
+
+WORD Mem_ReadWord(MEMORY *mem, WORD addr){
+
+}
+
+void Mem_IncByte(MEMORY *mem, WORD addr){
+
+}
+
+void Mem_DecByte(MEMORY *mem, WORD addr){
+
+}
