@@ -46,6 +46,11 @@ void EI(CPU *c){
     printf("EI: Unimplemented\n");
 }
 
+// Restart
+void RST(CPU *c){
+    printf("RST: Unimplemented\n");
+}
+
 // Jumps
 void JP(CPU *c){
     c->pc = IMM16(c);
@@ -128,11 +133,6 @@ void RET_cc(CPU *c, BYTE cond){
 
 void RETI(CPU *c){
     printf("RETI: Unimplemented\n");
-}
-
-// Restart
-void RST(CPU *c){
-    printf("RST: Unimplemented\n");
 }
 
 // 8-bit Loads
@@ -661,35 +661,293 @@ void DEC_Reg16(CPU *c, WORD *reg){
 }
 
 // Rotates and shifts
-void RLCA(CPU *c);
-void RLA(CPU *c);
-void RRCA(CPU *c);
-void RRA(CPU *c);
-void RLC_Reg8(CPU *c, BYTE *reg);
-void RLC_Mem8(CPU *c, WORD addr);
-void RRC_Reg8(CPU *c, BYTE *reg);
-void RRC_Mem8(CPU *c, WORD addr);
-void RL_Reg8(CPU *c, BYTE *reg);
-void RL_Mem8(CPU *c, WORD addr);
-void RR_Reg8(CPU *c, BYTE *reg);
-void RR_Mem8(CPU *c, WORD addr);
-void SLA_Reg8(CPU *c, BYTE *reg);
-void SLA_Mem8(CPU *c, WORD addr);
-void SRA_Reg8(CPU *c, BYTE *reg);
-void SRA_Mem8(CPU *c, WORD addr);
-void SWAP_Reg8(CPU *c, BYTE *reg);
-void SWAP_Mem8(CPU *c, WORD addr);
-void SRL_Reg8(CPU *c, BYTE *reg);
-void SRL_Mem8(CPU *c, WORD addr);
-// Bit Operations
-void BIT_Reg8(CPU *c, int bit, BYTE *reg);
-void BIT_Mem8(CPU *c, int bit, WORD addr);
-void SET_Reg8(CPU *c, int bit, BYTE *reg);
-void SET_Mem8(CPU *c, int bit, WORD addr);
-void RES_Reg8(CPU *c, int bit, BYTE *reg);
-void RES_Mem8(CPU *c, int bit, WORD addr);
+void RLCA(CPU *c){
+    BYTE rotate;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG | Z_FLAG);
+    CPU_SetFlag(c, C_FLAG, (rotate = c->af.hi >> 7) == 1);
+    c->af.hi = (c->af.hi << 1) | rotate;
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void RLA(CPU *c){
+    BYTE rotate = (CPU_CheckFlag(c, C_FLAG)) ? 0x01 : 0x00;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG | Z_FLAG);
+    CPU_SetFlag(c, C_FLAG, (c->af.hi >> 7) == 1);
+    c->af.hi = (c->af.hi << 1) | rotate;
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void RRCA(CPU *c){
+    BYTE rotate;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG | Z_FLAG);
+    CPU_SetFlag(c, C_FLAG, (rotate = c->af.hi & 0x01) == 1);
+    c->af.hi = (c->af.hi >> 1) | (rotate << 7);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void RRA(CPU *c){
+    BYTE rotate = (CPU_CheckFlag(c, C_FLAG)) ? 0x80 : 0x00;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG | Z_FLAG);
+    CPU_SetFlag(c, C_FLAG, (c->af.hi & 0x01) == 1);
+    c->af.hi = (c->af.hi >> 1) | rotate;
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+// CB Prefixed Rotates and Shifts
+void RLC_Reg8(CPU *c, BYTE *reg){
+    BYTE rotate;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (rotate = (*reg) >> 7) == 1);
+    CPU_SetFlag(c, Z_FLAG, (*reg = ((*reg) << 1) | rotate) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void RLC_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    BYTE rotate;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (rotate = data >> 7) == 1);
+    CPU_SetFlag(c, Z_FLAG, ((data = data << 1) | rotate) == 0);
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
+void RRC_Reg8(CPU *c, BYTE *reg){
+    BYTE rotate;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (rotate = (*reg) & 0x01) == 1);
+    CPU_SetFlag(c, Z_FLAG, (*reg = ((*reg) >> 1) | (rotate << 7)) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void RRC_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    BYTE rotate;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (rotate = data & 0x01) == 1);
+    CPU_SetFlag(c, Z_FLAG, (data = (data >> 1) | (rotate << 7)) == 0);
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
+void RL_Reg8(CPU *c, BYTE *reg){
+    BYTE rotate = (CPU_CheckFlag(c, C_FLAG)) ? 0x01 : 0x00;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, ((*reg) >> 7) == 1);
+    CPU_SetFlag(c, Z_FLAG, (*reg = ((*reg) << 1) | rotate) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void RL_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    BYTE rotate = (CPU_CheckFlag(c, C_FLAG)) ? 0x01 : 0x00;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (data >> 7) == 1);
+    CPU_SetFlag(c, Z_FLAG, (data = (data << 1) | rotate) == 0);
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
+void RR_Reg8(CPU *c, BYTE *reg){
+    BYTE rotate = (CPU_CheckFlag(c, C_FLAG)) ? 0x80 : 0x00;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, ((*reg) & 0x01) == 1);
+    CPU_SetFlag(c, Z_FLAG, (*reg = ((*reg) >> 1) | rotate) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void RR_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    BYTE rotate = (CPU_CheckFlag(c, C_FLAG)) ? 0x80 : 0x00;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (data & 0x01) == 1);
+    CPU_SetFlag(c, Z_FLAG, (data = (data >> 1) | rotate) == 0);
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
+void SLA_Reg8(CPU *c, BYTE *reg){
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, ((*reg) & 0x80) == 0x80);
+    CPU_SetFlag(c, Z_FLAG, ((*reg) <<= 1) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void SLA_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (data & 0x80) == 0x80);
+    CPU_SetFlag(c, Z_FLAG, (data <<= 1) == 0);
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
+void SRA_Reg8(CPU *c, BYTE *reg){
+    BYTE extend = (*reg) & 0x80;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, ((*reg) & 0x01) == 0x01);
+    CPU_SetFlag(c, Z_FLAG, (*reg = ((*reg) >> 1) | extend) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void SRA_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    BYTE extend = data & 0x80;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (data & 0x01) == 0x01);
+    CPU_SetFlag(c, Z_FLAG, (data = (data >> 1) | extend) == 0);
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
+void SWAP_Reg8(CPU *c, BYTE *reg){
+    CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
+    CPU_SetFlag(c, Z_FLAG, (*reg = (((*reg) & 0x0F) << 4) | (((*reg) & 0xF0) >> 4)) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void SWAP_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
+    CPU_SetFlag(c, Z_FLAG, (data = ((data & 0x0F) << 4) | ((data & 0xF0) >> 4)) == 0);
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
+void SRL_Reg8(CPU *c, BYTE *reg){
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, ((*reg) & 0x01) == 1);
+    CPU_SetFlag(c, Z_FLAG, ((*reg) >>= 1) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void SRL_Mem8(CPU *c, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (data & 0x01) == 1);
+    CPU_SetFlag(c, Z_FLAG, (data >>= 1) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
+// Bit Operations (CB Prefixed)
+void BIT_Reg8(CPU *c, int bit, BYTE *reg){
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, true);
+    CPU_SetFlag(c, Z_FLAG, ((*reg) & (0x01 << bit)) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void BIT_Mem8(CPU *c, int bit, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, true);
+    CPU_SetFlag(c, Z_FLAG, (data & (0x01 << bit)) == 0);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(3));
+}
+
+void SET_Reg8(CPU *c, int bit, BYTE *reg){
+    (*reg) |= (0x01 << bit);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void SET_Mem8(CPU *c, int bit, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    data |= 0x01 << bit;
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
+void RES_Reg8(CPU *c, int bit, BYTE *reg){
+    (*reg) &= ~(0x01 << bit);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(2));
+}
+
+void RES_Mem8(CPU *c, int bit, WORD addr){
+    BYTE data = Mem_ReadByte(c->memory, addr);
+    data &= ~(0x01 << bit);
+    Mem_WriteByte(c->memory, addr, data);
+    c->pc += 2;
+    CPU_UpdateClockTimer(c, CYCLES(4));
+}
+
 // Misc.
-void DAA(CPU *c); // Convert A to packed BCD
-void CPL(CPU *c); // Complement A
-void CCF(CPU *c); // Complement carry flag
-void SCF(CPU *c); // Set carry flag
+void DAA(CPU *c){
+    // Convert A to packed BCD
+    bool NF = CPU_CheckFlag(c, N_FLAG);
+    bool HF = CPU_CheckFlag(c, H_FLAG);
+    bool CF = CPU_CheckFlag(c, C_FLAG);
+    if(!NF && (HF || c->af.hi > 0x9)){
+        c->af.hi += 0x06;
+        if(CF || c->af.hi > 0x99){
+            c->af.hi += 0x60;
+            CPU_SetFlag(c, C_FLAG, true);
+        }
+        else{
+            CPU_ClearFlag(c, C_FLAG);
+        }
+    }
+    else if(NF){
+        if(CF){
+            c->af.hi += ((HF) ? 0x9A : 0xA0);
+            CPU_SetFlag(c, C_FLAG, true);
+        }
+        else if(HF){
+            c->af.hi += 0xFA;
+            CPU_ClearFlag(c, C_FLAG);
+        }
+    }
+    else{
+        CPU_ClearFlag(c, C_FLAG);
+    }
+    CPU_ClearFlag(c, H_FLAG);
+    CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+
+void CPL(CPU *c){
+    // Complement A
+    CPU_SetFlag(c, H_FLAG | N_FLAG, true);
+    c->af.hi = ~(c->af.hi);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+void CCF(CPU *c){
+    // Complement carry flag
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, !CPU_CheckFlag(c, C_FLAG));
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
+void SCF(CPU *c){
+    // Set carry flag
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, true);
+    c->pc++;
+    CPU_UpdateClockTimer(c, CYCLES(1));
+}
