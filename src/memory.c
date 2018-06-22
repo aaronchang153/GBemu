@@ -56,6 +56,8 @@ void Mem_Init(MEMORY *mem){
 
 void Mem_Destroy(MEMORY *mem){
     if(mem != NULL){
+        if(mem->game_rom != NULL)
+            free(mem->game_rom);
         free(mem);
     }
 }
