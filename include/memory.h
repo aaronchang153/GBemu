@@ -8,19 +8,19 @@
  * > Taken from giibiiadvanced docs
  * > https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
  * 
- * 0000-3FFF: [ROM0] Non-switchable ROM bank
- *     > 0000-0100: [BOOT] Boot ROM (on startup)
- * 4000-7FFF: [ROMX] Switchable ROM bank
- * 8000-9FFF: [VRAM] Video RAM
- * A000-BFFF: [SRAM] External RAM in cartridge
- * C000-CFFF: [WRAM0] Work RAM
- * D000-DFFF: [WRAMX] Work RAM (switchable in GBC)
- * E000-FDFF: [ECHO] Complicated, but usually just echos WRAM
- * FE00-FE9F: [OAM] Sprite information table
- * FEA0-FEFF: <UNUSED>
- * FF00-FF7F: [IO] I/O Registers
- * FF80-FFFE: [HRAM] Internal CPU RAM
- *      FFFF: [IE] Interrupt enable flags
+ * 0000-3FFF: [ROM0]    Non-switchable ROM bank
+ *      > 0000-0100:    [BOOT] Boot ROM (on startup)
+ * 4000-7FFF: [ROMX]    Switchable ROM bank
+ * 8000-9FFF: [VRAM]    Video RAM
+ * A000-BFFF: [SRAM]    External RAM in cartridge
+ * C000-CFFF: [WRAM0]   Work RAM
+ * D000-DFFF: [WRAMX]   Work RAM (switchable in GBC)
+ * E000-FDFF: [ECHO]    Complicated, but usually just echos WRAM
+ * FE00-FE9F: [OAM]     Sprite information table
+ * FEA0-FEFF:           <UNUSED>
+ * FF00-FF7F: [IO]      I/O Registers
+ * FF80-FFFE: [HRAM]    Internal CPU RAM
+ *      FFFF: [IE]      Interrupt enable flags
  * 
  */
 
@@ -40,14 +40,23 @@ typedef enum{
     IE      = 0xFFFF
 } MEM_REGION;
 
-
+// 64 KB Byte-Addressable Memory
 typedef struct{
     bool startup;
-    BYTE boot[0x100];
-    BYTE memory[0x10000];
+    BYTE boot[0x100];   // 256  B: Boot ROM
+    BYTE *game_rom;     //         Entire game ROM
+    BYTE *romx;         //         Current (switable) ROM bank
+    BYTE *sram;         //         Current external RAM
+    BYTE rom0[0x4000];  //  16 KB: Unswitchable ROM bank 0
+    BYTE vram[0x2000];  //   8 KB: VRAM
+    BYTE mem[0x4000];   //  16 KB: Remaining memory
 } MEMORY;
 
 MEMORY *Mem_Create();
+
+void Mem_LoadGame(MEMORY *mem, char *filename);
+
+void Mem_UnloadGame(MEMORY *mem);
 
 void Mem_Init(MEMORY *mem);
 
