@@ -45,10 +45,10 @@ typedef struct{
     bool startup;
     BYTE boot[0x100];   // 256  B: Boot ROM
     BYTE *game_rom;     //         Entire game cartridge
+    BYTE *rom0;         //  16 KB: Unswitchable ROM bank 0
     BYTE *romx;         //  16 KB: Current (switable) ROM bank
-    BYTE *sram;         //   8 KB: Current external RAM
-    BYTE rom0[0x4000];  //  16 KB: Unswitchable ROM bank 0
     BYTE vram[0x2000];  //   8 KB: VRAM
+    BYTE *sram;         //   8 KB: Current external RAM
     BYTE mem[0x4000];   //  16 KB: Remaining memory
 } MEMORY;
 
@@ -69,9 +69,5 @@ void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data);
 BYTE Mem_ReadByte(MEMORY *mem, WORD addr);
 
 WORD Mem_ReadWord(MEMORY *mem, WORD addr);
-
-void Mem_IncByte(MEMORY *mem, WORD addr);
-
-void Mem_DecByte(MEMORY *mem, WORD addr);
 
 #endif // MEMORY_H
