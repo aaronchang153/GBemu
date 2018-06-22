@@ -9,7 +9,7 @@
  * > https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
  * 
  * 0000-3FFF: [ROM0]    Non-switchable ROM bank
- *      > 0000-0100:    [BOOT] Boot ROM (on startup)
+ *      > 0000-00FF:    [BOOT] Boot ROM (on startup)
  * 4000-7FFF: [ROMX]    Switchable ROM bank
  * 8000-9FFF: [VRAM]    Video RAM
  * A000-BFFF: [SRAM]    External RAM in cartridge
@@ -44,9 +44,9 @@ typedef enum{
 typedef struct{
     bool startup;
     BYTE boot[0x100];   // 256  B: Boot ROM
-    BYTE *game_rom;     //         Entire game ROM
-    BYTE *romx;         //         Current (switable) ROM bank
-    BYTE *sram;         //         Current external RAM
+    BYTE *game_rom;     //         Entire game cartridge
+    BYTE *romx;         //  16 KB: Current (switable) ROM bank
+    BYTE *sram;         //   8 KB: Current external RAM
     BYTE rom0[0x4000];  //  16 KB: Unswitchable ROM bank 0
     BYTE vram[0x2000];  //   8 KB: VRAM
     BYTE mem[0x4000];   //  16 KB: Remaining memory
