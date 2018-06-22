@@ -11,6 +11,9 @@ static MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr);
 
 MEMORY *Mem_Create(){
     MEMORY *memory = malloc(sizeof(MEMORY));
+    if(memory != NULL){
+        memset(memory, 0, sizeof(MEMORY));
+    }
     return memory;
 }
 
