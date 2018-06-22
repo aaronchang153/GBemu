@@ -13,6 +13,7 @@ CPU *CPU_Create(){
 void CPU_Startup(CPU *c){
     if(c != NULL){
         // Still needs to do a lot more
+        c->pc = 0x0000;
         c->sp = 0xFFFE;
     }
 }
@@ -25,6 +26,14 @@ void CPU_Destroy(CPU *c){
 
 void CPU_SetMemory(CPU *c, MEMORY *mem){
     c->memory = mem;
+}
+
+void CPU_Fetch(CPU *c){
+    c->ir = Mem_ReadByte(c->memory, c->pc);
+}
+
+void CPU_DecodeExecute(CPU *c){
+    Decode_Execute(c);
 }
 
 void CPU_EmulateCycle(CPU *c){

@@ -46,7 +46,12 @@ void CPU_Destroy(CPU *c);
 
 void CPU_SetMemory(CPU *c, MEMORY *mem);
 
+void CPU_Fetch(CPU *c);
+
+void CPU_DecodeExecute(CPU *c);
+
 // Emulate a single instruction cycle
+// Just calls the above two functions in order
 void CPU_EmulateCycle(CPU *c);
 
 void CPU_UpdateClockTimer(CPU *c, int cycles);
