@@ -6,19 +6,11 @@
 
 
 CPU *CPU_Create(){
-    CPU *cpu = NULL;
-    cpu = (CPU *) malloc(sizeof(CPU));
-    if(cpu != NULL){
-        cpu->memory = Mem_Create();
-        if(cpu->memory == NULL){
-            CPU_Destroy(cpu);
-            cpu = NULL;
-        }
-    }
+    CPU *cpu = malloc(sizeof(CPU));
     return cpu;
 }
 
-void CPU_Init(CPU *c){
+void CPU_Startup(CPU *c){
     if(c != NULL){
         // Still needs to do a lot more
         c->sp = 0xFFFE;
@@ -27,9 +19,12 @@ void CPU_Init(CPU *c){
 
 void CPU_Destroy(CPU *c){
     if(c != NULL){
-        Mem_Destroy(c->memory);
         free(c);
     }
+}
+
+void CPU_SetMemory(CPU *c, MEMORY *mem){
+    c->memory = mem;
 }
 
 void CPU_EmulateCycle(CPU *c){

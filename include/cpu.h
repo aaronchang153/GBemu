@@ -40,9 +40,11 @@ struct cpu{
 
 CPU *CPU_Create();
 
-void CPU_Init(CPU *c);
+void CPU_Startup(CPU *c);
 
 void CPU_Destroy(CPU *c);
+
+void CPU_SetMemory(CPU *c, MEMORY *mem);
 
 // Emulate a single instruction cycle
 void CPU_EmulateCycle(CPU *c);

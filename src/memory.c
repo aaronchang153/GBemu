@@ -43,7 +43,7 @@ void Mem_UnloadGame(MEMORY *mem){
     }
 }
 
-void Mem_Init(MEMORY *mem){
+void Mem_Startup(MEMORY *mem){
     if(mem != NULL){
         memset((void *) mem, 0, sizeof(MEMORY));
         FILE *fp = fopen(BOOT_ROM, "rb");

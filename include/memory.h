@@ -58,7 +58,7 @@ void Mem_LoadGame(MEMORY *mem, char *filename);
 
 void Mem_UnloadGame(MEMORY *mem);
 
-void Mem_Init(MEMORY *mem);
+void Mem_Startup(MEMORY *mem);
 
 void Mem_Destroy(MEMORY *mem);
 
