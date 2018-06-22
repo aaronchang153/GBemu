@@ -370,6 +370,7 @@ void Decode_X_3(CPU *c){
 }
 
 void CB_Prefix(CPU *c){
+    c->ir = Mem_ReadByte(c->memory, c->pc+1);
     int x = X(c->ir);
     int y = Y(c->ir);
     int z = Z(c->ir);
