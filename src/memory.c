@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char *BOOT_ROM = "bootstrap.bin";
+static const char *BOOT_ROM = "bin\\bootstrap.bin";
 
 static MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr);
 
@@ -13,6 +13,14 @@ MEMORY *Mem_Create(){
     MEMORY *memory = malloc(sizeof(MEMORY));
     if(memory != NULL){
         memset(memory, 0, sizeof(MEMORY));
+        FILE *fp = fopen(BOOT_ROM, "rb");
+        if(fp != NULL){
+            for(int i = 0; i < 0x100; i++){
+                fread(&memory->boot[i], 1, 1, fp);
+            }
+            fclose(fp);
+        }
+        memory->startup = true;
     }
     return memory;
 }
@@ -44,16 +52,8 @@ void Mem_UnloadGame(MEMORY *mem){
 }
 
 void Mem_Startup(MEMORY *mem){
-    if(mem != NULL){
-        memset((void *) mem, 0, sizeof(MEMORY));
-        FILE *fp = fopen(BOOT_ROM, "rb");
-        if(fp != NULL){
-            for(int i = 0; i < 0x100; i++){
-                fread(&mem->boot[i], 1, 1, fp);
-            }
-            fclose(fp);
-        }
-        mem->startup = true;
+    if(mem != NULL && mem->game_rom != NULL){
+        mem->rom0 = mem->game_rom;
     }
 }
 
@@ -66,7 +66,27 @@ void Mem_Destroy(MEMORY *mem){
 }
 
 void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
-
+    switch(Mem_GetRegion(mem, addr)){
+        case SRAM:
+            mem->sram[addr - 0xA000] = data;
+            break;
+        case VRAM:
+            mem->vram[addr - 0x8000] = data;
+            break;
+        case WRAM0:
+        case WRAMX:
+        case OAM:
+        case HRAM:
+        case IE:
+        case IO:
+            mem->mem[addr - 0xC000] = data;
+            break;
+        case ECHO:
+            mem->mem[addr - 0xE000] = data;
+            break;
+        default:
+            printf("Unable to write to address: 0x%04x\n", addr);
+    };
 }
 
 BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
@@ -102,15 +122,7 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
 }
 
 WORD Mem_ReadWord(MEMORY *mem, WORD addr){
-    return (Mem_ReadByte(mem, addr + 1) << 4) | Mem_ReadByte(mem, addr);
-}
-
-void Mem_IncByte(MEMORY *mem, WORD addr){
-
-}
-
-void Mem_DecByte(MEMORY *mem, WORD addr){
-
+    return (Mem_ReadByte(mem, addr + 1) << 8) | Mem_ReadByte(mem, addr);
 }
 
 static MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr){
