@@ -14,9 +14,43 @@ MEMORY *Mem_Create(){
     return memory;
 }
 
+void Mem_LoadGame(MEMORY *mem, char *filename){
+    if(mem != NULL && filename != NULL){
+        Mem_UnloadGame(mem);
+        FILE *fp = fopen(filename, "rb");
+        if(fp != NULL){
+            fseek(fp, 0L, SEEK_END);
+            size_t size = ftell(fp);
+            rewind(fp);
+            mem->game_rom = malloc(size);
+            if(mem->game_rom != NULL){
+                for(int i = 0; i < size; i++){
+                    fread(mem->game_rom + i, 1, 1, fp);
+                }
+            }
+            fclose(fp);
+        }
+    }
+}
+
+void Mem_UnloadGame(MEMORY *mem){
+    if(mem != NULL && mem->game_rom != NULL){
+        free(mem->game_rom);
+        mem->game_rom = NULL;
+    }
+}
+
 void Mem_Init(MEMORY *mem){
     if(mem != NULL){
         memset((void *) mem, 0, sizeof(MEMORY));
+        FILE *fp = fopen(BOOT_ROM, "rb");
+        if(fp != NULL){
+            for(int i = 0; i < 0x100; i++){
+                fread(&mem->boot[i], 1, 1, fp);
+            }
+            fclose(fp);
+        }
+        mem->startup = true;
     }
 }
 
@@ -31,11 +65,39 @@ void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
 }
 
 BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
-
+    switch(Mem_GetRegion(mem, addr)){
+        case BOOT:
+            if(addr == 0xFF)
+                mem->startup = false;
+            return mem->boot[addr];
+        case ROMX:
+            return mem->romx[addr - 0x4000];
+        case SRAM:
+            return mem->sram[addr - 0xA000];
+        case VRAM:
+            return mem->vram[addr - 0x8000];
+        case WRAM0:
+        case WRAMX:
+        case OAM:
+        case HRAM:
+        case IE:
+            return mem->mem[addr - 0xC000];
+        case ECHO:
+            // May need to do more than just this
+            return mem->mem[addr - 0xE000];
+        case UNUSED:
+            return 0x00;
+        case IO:
+            // Temporary
+            return 0x01;
+        default:
+            printf("Invalid read address: %x\n", addr);
+            return 0;
+    };
 }
 
 WORD Mem_ReadWord(MEMORY *mem, WORD addr){
-
+    return (Mem_ReadByte(mem, addr + 1) << 4) | Mem_ReadByte(mem, addr);
 }
 
 void Mem_IncByte(MEMORY *mem, WORD addr){
