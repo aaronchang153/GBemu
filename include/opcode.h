@@ -10,6 +10,8 @@ void STOP(CPU *c);
 void HALT(CPU *c);
 void DI(CPU *c);
 void EI(CPU *c);
+// Restart
+void RST(CPU *c);
 // Jumps
 void JP(CPU *c);
 void JP_cc(CPU *c, BYTE cond);
@@ -23,8 +25,6 @@ void CALL_cc(CPU *c, BYTE cond);
 void RET(CPU *c);
 void RET_cc(CPU *c, BYTE cond);
 void RETI(CPU *c);
-// Restart
-void RST(CPU *c);
 // 8-bit Loads
 void LD_Imm8toReg8(CPU *c, BYTE *reg);
 void LD_Imm8toMem8(CPU *c, WORD addr);
@@ -91,6 +91,7 @@ void RLCA(CPU *c);
 void RLA(CPU *c);
 void RRCA(CPU *c);
 void RRA(CPU *c);
+// CB Prefixed Rotates and Shifts
 void RLC_Reg8(CPU *c, BYTE *reg);
 void RLC_Mem8(CPU *c, WORD addr);
 void RRC_Reg8(CPU *c, BYTE *reg);
@@ -107,7 +108,7 @@ void SWAP_Reg8(CPU *c, BYTE *reg);
 void SWAP_Mem8(CPU *c, WORD addr);
 void SRL_Reg8(CPU *c, BYTE *reg);
 void SRL_Mem8(CPU *c, WORD addr);
-// Bit Operations
+// Bit Operations (CB Prefixed)
 void BIT_Reg8(CPU *c, int bit, BYTE *reg);
 void BIT_Mem8(CPU *c, int bit, WORD addr);
 void SET_Reg8(CPU *c, int bit, BYTE *reg);
