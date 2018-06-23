@@ -25,7 +25,7 @@
  */
 
 typedef enum{
-    BOOT    = 0x0000,
+    //BOOT    = 0x0000,
     ROM0    = 0x0000,
     ROMX    = 0x4000,
     VRAM    = 0x8000,
@@ -42,8 +42,8 @@ typedef enum{
 
 // 64 KB Byte-Addressable Memory
 typedef struct{
-    bool startup;
-    BYTE boot[0x100];   // 256  B: Boot ROM
+    //bool startup;
+    //BYTE boot[0x100];   // 256  B: Boot ROM
     BYTE *game_rom;     //         Entire game cartridge
     BYTE *rom0;         //  16 KB: Unswitchable ROM bank 0
     BYTE *romx;         //  16 KB: Current (switable) ROM bank
