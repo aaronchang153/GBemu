@@ -9,8 +9,12 @@
 
 
 int main(){
+    char game_file[128];
+    printf("Enter path to game: ");
+    scanf("%s", game_file);
     CPU *cpu = CPU_Create();
     MEMORY *memory = Mem_Create();
+    Mem_LoadGame(memory, game_file);
     CPU_SetMemory(cpu, memory);
     Mem_Startup(memory);
     CPU_Startup(cpu);
