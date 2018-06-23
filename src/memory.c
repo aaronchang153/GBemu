@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char *BOOT_ROM = "bin\\bootstrap.bin";
-
 static MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr);
 
 
@@ -13,14 +11,6 @@ MEMORY *Mem_Create(){
     MEMORY *memory = malloc(sizeof(MEMORY));
     if(memory != NULL){
         memset(memory, 0, sizeof(MEMORY));
-        FILE *fp = fopen(BOOT_ROM, "rb");
-        if(fp != NULL){
-            for(int i = 0; i < 0x100; i++){
-                fread(&memory->boot[i], 1, 1, fp);
-            }
-            fclose(fp);
-        }
-        memory->startup = true;
     }
     return memory;
 }
@@ -55,6 +45,37 @@ void Mem_Startup(MEMORY *mem){
     if(mem != NULL && mem->game_rom != NULL){
         mem->rom0 = mem->game_rom;
         mem->romx = mem->game_rom + 0x4000;
+        Mem_WriteByte(mem, 0xFF05, 0x00); // TIMA
+        Mem_WriteByte(mem, 0xFF06, 0x00); // TMA
+        Mem_WriteByte(mem, 0xFF07, 0x00); // TAC
+        Mem_WriteByte(mem, 0xFF10, 0x80); // NR10
+        Mem_WriteByte(mem, 0xFF11, 0xBF); // NR11
+        Mem_WriteByte(mem, 0xFF12, 0xF3); // NR12
+        Mem_WriteByte(mem, 0xFF14, 0xBF); // NR14
+        Mem_WriteByte(mem, 0xFF16, 0x3F); // NR21
+        Mem_WriteByte(mem, 0xFF17, 0x00); // NR22
+        Mem_WriteByte(mem, 0xFF19, 0xBF); // NR24
+        Mem_WriteByte(mem, 0xFF1A, 0x7F); // NR30
+        Mem_WriteByte(mem, 0xFF1B, 0xFF); // NR31
+        Mem_WriteByte(mem, 0xFF1C, 0x9F); // NR32
+        Mem_WriteByte(mem, 0xFF1E, 0xBF); // NR33
+        Mem_WriteByte(mem, 0xFF20, 0xFF); // NR41
+        Mem_WriteByte(mem, 0xFF21, 0x00); // NR42
+        Mem_WriteByte(mem, 0xFF22, 0x00); // NR43
+        Mem_WriteByte(mem, 0xFF23, 0xBF); // NR44
+        Mem_WriteByte(mem, 0xFF24, 0x77); // NR50
+        Mem_WriteByte(mem, 0xFF25, 0xF3); // NR51
+        Mem_WriteByte(mem, 0xFF26, 0xF1), // NR52
+        Mem_WriteByte(mem, 0xFF40, 0x91); // LCDC
+        Mem_WriteByte(mem, 0xFF42, 0x00); // SCY
+        Mem_WriteByte(mem, 0xFF43, 0x00); // SCX
+        Mem_WriteByte(mem, 0xFF45, 0x00); // LYC
+        Mem_WriteByte(mem, 0xFF47, 0xFC); // BGP
+        Mem_WriteByte(mem, 0xFF48, 0xFF); // OBP0
+        Mem_WriteByte(mem, 0xFF49, 0xFF); // OBP1
+        Mem_WriteByte(mem, 0xFF4A, 0x00); // WY
+        Mem_WriteByte(mem, 0xFF4B, 0x00); // WX
+        Mem_WriteByte(mem, 0xFFFF, 0x00); // IE
     }
 }
 
@@ -110,11 +131,10 @@ void Mem_WriteWord(MEMORY *mem, WORD addr, WORD data){
 BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
     // Sets Divider Register to the latest value before reading
     mem->mem[DIV_ADDR - 0xC000] = mem->system_counter >> 8;
-    switch(Mem_GetRegion(mem, addr)){
-        case BOOT:
-            if(addr == 0xFF)
-                mem->startup = false;
-            return mem->boot[addr];
+    MEM_REGION region = Mem_GetRegion(mem, addr);
+    switch(region){
+        case ROM0:
+            return mem->rom0[addr];
         case ROMX:
             return mem->romx[addr - 0x4000];
         case SRAM:
@@ -148,7 +168,7 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
                 return 0x01;
             }
         default:
-            printf("Invalid read address: %x\n", addr);
+            printf("Invalid read address: 0x%x\n", addr);
             return 0;
     };
 }
@@ -166,9 +186,7 @@ void Mem_DisableInterrupt(MEMORY *mem, BYTE interrupt){
 }
 
 static MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr){
-    if(mem->startup && addr < 0x100)
-        return BOOT;
-    else if(addr == 0xFFFF)
+    if(addr == 0xFFFF)
         return IE;
     else if(addr >= HRAM)
         return HRAM;
