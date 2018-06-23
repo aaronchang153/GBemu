@@ -57,8 +57,8 @@ void JP(CPU *c){
     CPU_UpdateClockTimer(c, CYCLES(4));
 }
 
-void JP_cc(CPU *c, BYTE cond){
-    if(CPU_CheckFlag(c, cond)){
+void JP_cc(CPU *c, BYTE cond, bool not){
+    if(CPU_CheckFlag(c, cond) != not){
         c->pc = IMM16(c);
         CPU_UpdateClockTimer(c, CYCLES(4));
     }
@@ -78,8 +78,8 @@ void JR(CPU *c){
     CPU_UpdateClockTimer(c, CYCLES(3));
 }
 
-void JR_cc(CPU *c, BYTE cond){
-    if(CPU_CheckFlag(c, cond)){
+void JR_cc(CPU *c, BYTE cond, bool not){
+    if(CPU_CheckFlag(c, cond) != not){
         c->pc = c->pc + (SIGNED_BYTE) IMM8(c);
         CPU_UpdateClockTimer(c, CYCLES(3));
     }
@@ -98,8 +98,8 @@ void CALL(CPU *c){
     CPU_UpdateClockTimer(c, CYCLES(6));
 }
 
-void CALL_cc(CPU *c, BYTE cond){
-    if(CPU_CheckFlag(c, cond)){
+void CALL_cc(CPU *c, BYTE cond, bool not){
+    if(CPU_CheckFlag(c, cond) != not){
         Mem_WriteByte(c->memory, c->sp-1, HI(c->pc));
         Mem_WriteByte(c->memory, c->sp-2, LO(c->pc));
         c->pc = IMM16(c);
@@ -119,8 +119,8 @@ void RET(CPU *c){
     CPU_UpdateClockTimer(c, CYCLES(4));
 }
 
-void RET_cc(CPU *c, BYTE cond){
-    if(CPU_CheckFlag(c, cond)){
+void RET_cc(CPU *c, BYTE cond, bool not){
+    if(CPU_CheckFlag(c, cond) != not){
         c->pc = Mem_ReadWord(c->memory, c->sp);
         c->sp += 2;
         CPU_UpdateClockTimer(c, CYCLES(5));

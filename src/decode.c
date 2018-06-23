@@ -40,10 +40,12 @@ void Decode_X_0(CPU *c){
                     JR(c);
                     break;
                 case 4:
+                case 6: // JR cc[y-4],d
+                    JR_cc(c, deref_ccTable((Y(c->ir)) - 4), true);
+                    break;
                 case 5:
-                case 6:
                 case 7: // JR cc[y-4],d
-                    JR_cc(c, deref_ccTable((Y(c->ir)) - 4));
+                    JR_cc(c, deref_ccTable((Y(c->ir)) - 4), false);
                     break;
                 default:
                     p_undef(c);
@@ -252,7 +254,12 @@ void Decode_X_3(CPU *c){
                 case 1:
                 case 2:
                 case 3: // RET cc[y]
-                    RET_cc(c, deref_ccTable(y));
+                    if(y == 0 || y == 2){
+                        RET_cc(c, deref_ccTable(y), true);
+                    }
+                    else if(y == 1 || y == 3){
+                        RET_cc(c, deref_ccTable(y), false);
+                    }
                     break;
                 case 4: // LDH (n),A
                     LDH_AtoN(c);
@@ -303,7 +310,12 @@ void Decode_X_3(CPU *c){
                 case 1:
                 case 2:
                 case 3: // JP cc[y],nn
-                    JP_cc(c, deref_ccTable(y));
+                    if(y == 0 || y == 2){
+                        JP_cc(c, deref_ccTable(y), true);
+                    }
+                    else if(y == 1 || y == 3){
+                        JP_cc(c, deref_ccTable(y), false);
+                    }
                     break;
                 case 4: // LD (0xFF00 + C),A
                     LD_AtoC(c);
@@ -340,8 +352,11 @@ void Decode_X_3(CPU *c){
             };
             break;
         case 4:
-            if(y >= 0 && y < 4){ // CALL cc[y],nn
-                CALL_cc(c, deref_ccTable(y));
+            if(y == 0 || y == 2){ // CALL cc[y],nn
+                CALL_cc(c, deref_ccTable(y), true);
+            }
+            else if(y == 1 || y == 3){ // CALL cc[y],nn
+                CALL_cc(c, deref_ccTable(y), false);
             }
             else{
                 p_undef(c);
@@ -447,11 +462,14 @@ WORD *deref_rp2Table(CPU *c, int index){
 
 BYTE deref_ccTable(int index){
     switch(index){
-        case 0: return N_FLAG | Z_FLAG;
-        case 1: return Z_FLAG;
-        case 2: return N_FLAG | C_FLAG;
-        case 3: return C_FLAG;
-        default: return 0;
+        case 0: // NZ
+        case 1: //  Z
+            return Z_FLAG;
+        case 2: // NC
+        case 3: //  C
+            return C_FLAG;
+        default:
+            return 0;
     };
 }
 

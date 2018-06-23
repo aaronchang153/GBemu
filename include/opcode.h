@@ -14,16 +14,16 @@ void EI(CPU *c);
 void RST(CPU *c);
 // Jumps
 void JP(CPU *c);
-void JP_cc(CPU *c, BYTE cond);
+void JP_cc(CPU *c, BYTE cond, bool not);
 void JP_HL(CPU *c);
 void JR(CPU *c);
-void JR_cc(CPU *c, BYTE cond);
+void JR_cc(CPU *c, BYTE cond, bool not);
 // Calls
 void CALL(CPU *c);
-void CALL_cc(CPU *c, BYTE cond);
+void CALL_cc(CPU *c, BYTE cond, bool not);
 // Returns
 void RET(CPU *c);
-void RET_cc(CPU *c, BYTE cond);
+void RET_cc(CPU *c, BYTE cond, bool not);
 void RETI(CPU *c);
 // 8-bit Loads
 void LD_Imm8toReg8(CPU *c, BYTE *reg);
