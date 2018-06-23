@@ -42,7 +42,7 @@ void CPU_EmulateCycle(CPU *c){
 }
 
 void CPU_UpdateClockTimer(CPU *c, int cycles){
-
+    c->memory->system_counter += cycles;
 }
 
 void CPU_SetInterrupt(CPU *c, bool e){
