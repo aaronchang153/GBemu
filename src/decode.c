@@ -152,6 +152,7 @@ void Decode_X_0(CPU *c){
                 default:
                     p_undef(c);
             };
+            break;
         case 6: // LD r[y],n
             switch(Y(c->ir)){
                 case 0:
