@@ -54,6 +54,7 @@ void Mem_UnloadGame(MEMORY *mem){
 void Mem_Startup(MEMORY *mem){
     if(mem != NULL && mem->game_rom != NULL){
         mem->rom0 = mem->game_rom;
+        mem->romx = mem->game_rom + 0x4000;
     }
 }
 
@@ -79,7 +80,19 @@ void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
         case HRAM:
         case IE:
         case IO:
-            mem->mem[addr - 0xC000] = data;
+            switch(addr){
+                case DIV_ADDR:
+                    mem->system_counter = 0;
+                    break;
+                case TIMA_COUNTER_ADDR:
+                case TIMA_MODULO_ADDR:
+                case IF_ADDR:
+                    mem->mem[addr - 0xC000] = data;
+                    break;
+                case TAC_ADDR:
+                    mem->mem[addr - 0xC000] = data & 0x07;
+                    break;
+            };
             break;
         case ECHO:
             mem->mem[addr - 0xE000] = data;
@@ -89,7 +102,14 @@ void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
     };
 }
 
+void Mem_WriteWord(MEMORY *mem, WORD addr, WORD data){
+    Mem_WriteByte(mem, addr, data & 0x00FF);
+    Mem_WriteByte(mem, addr + 1, (data & 0xFF00) >> 8);
+}
+
 BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
+    // Sets Divider Register to the latest value before reading
+    mem->mem[DIV_ADDR - 0xC000] = mem->system_counter >> 8;
     switch(Mem_GetRegion(mem, addr)){
         case BOOT:
             if(addr == 0xFF)
@@ -113,8 +133,20 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
         case UNUSED:
             return 0x00;
         case IO:
-            // Temporary
-            return 0x01;
+            if(addr == DIV_ADDR || addr == TIMA_COUNTER_ADDR ||
+               addr == TIMA_MODULO_ADDR)
+            {
+                return mem->mem[addr - 0xC000];
+            }
+            else if(addr == TAC_ADDR){
+                return mem->mem[addr - 0xC000] & 0x07;
+            }
+            else if(addr == IF_ADDR){
+                return mem->mem[addr - 0xC000] | 0xE0;
+            }
+            else{
+                return 0x01;
+            }
         default:
             printf("Invalid read address: %x\n", addr);
             return 0;
@@ -123,6 +155,14 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
 
 WORD Mem_ReadWord(MEMORY *mem, WORD addr){
     return (Mem_ReadByte(mem, addr + 1) << 8) | Mem_ReadByte(mem, addr);
+}
+
+void Mem_EnableInterrupt(MEMORY *mem, BYTE interrupt){
+    mem->mem[0xFFFF] |= interrupt; 
+}
+
+void Mem_DisableInterrupt(MEMORY *mem, BYTE interrupt){
+    mem->mem[0xFFFF] &= ~(interrupt);
 }
 
 static MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr){
