@@ -4,9 +4,6 @@
 #include "common.h"
 #include "memory.h"
 
-#define CLK_F   4194304 // Hz
-#define CYCLE_F 1048576 // Hz
-
 static const BYTE Z_FLAG = 0x80; // Zero flag
 static const BYTE N_FLAG = 0x40; // Subtract flag
 static const BYTE H_FLAG = 0x20; // Half-Carry flag
@@ -32,8 +29,7 @@ struct cpu{
     REGISTER de;
     REGISTER hl;
     bool halted;
-    bool interrupt_enable;
-    unsigned int clk_timer;
+    bool IME; // Interrupt Master Enable flag
 
     MEMORY *memory;
 };
