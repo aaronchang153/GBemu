@@ -36,7 +36,9 @@ void Enter_Debug_Mode(CPU *c){
         CPU_Fetch(c);
         Print_CPU_State(c);
         CPU_DecodeExecute(c);
-        getchar();
+        if(getchar() == 'Q'){
+            break;
+        }
     }
 }
 
