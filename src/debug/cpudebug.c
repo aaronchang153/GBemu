@@ -31,13 +31,35 @@ static void Print_CPU_State(CPU *c){
     printf("==================================================\n");
 }
 
-void Start_Debugger(CPU *c){
-    bool running = true;
-    while(running){
+void Enter_Debug_Mode(CPU *c){
+    while(true){
         CPU_Fetch(c);
         Print_CPU_State(c);
         CPU_DecodeExecute(c);
-        system("PAUSE");
+        getchar();
+    }
+}
+
+void Start_Debugger(CPU *c){
+    int mode;
+    int bp;
+    printf("Enter debug mode: [1] Line-By-Line [2] Break [3] Normal\n");
+    scanf("%d", &mode);
+    if(mode == 1){
+        Enter_Debug_Mode(c);
+    }
+    else if(mode == 2){
+        printf("Break at PC = ");
+        scanf("%d", &bp);
+        while(c->pc != bp){
+            CPU_EmulateCycle(c);
+        }
+        Enter_Debug_Mode(c);
+    }
+    else if(mode == 3){
+        while(true){
+            CPU_EmulateCycle(c);
+        }
     }
 }
 
