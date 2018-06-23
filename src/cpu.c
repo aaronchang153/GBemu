@@ -12,9 +12,12 @@ CPU *CPU_Create(){
 
 void CPU_Startup(CPU *c){
     if(c != NULL){
-        // Still needs to do a lot more
-        c->pc = 0x0000;
+        c->pc = 0x0100;
         c->sp = 0xFFFE;
+        c->af.reg = 0x01B0;
+        c->bc.reg = 0x0013;
+        c->de.reg = 0x00D8;
+        c->hl.reg = 0x014D;
     }
 }
 
