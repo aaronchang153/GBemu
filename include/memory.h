@@ -70,6 +70,8 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr);
 
 WORD Mem_ReadWord(MEMORY *mem, WORD addr);
 
+void Mem_RequestInterrupt(MEMORY *mem, BYTE interrupt);
+
 void Mem_EnableInterrupt(MEMORY *mem, BYTE interrupt);
 
 void Mem_DisableInterrupt(MEMORY *mem, BYTE interrupt);
