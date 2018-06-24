@@ -172,12 +172,16 @@ WORD Mem_ReadWord(MEMORY *mem, WORD addr){
     return (Mem_ReadByte(mem, addr + 1) << 8) | Mem_ReadByte(mem, addr);
 }
 
+void Mem_RequestInterrupt(MEMORY *mem, BYTE interrupt){
+    mem->mem[0xFF0F - 0xC000] |= interrupt;
+}
+
 void Mem_EnableInterrupt(MEMORY *mem, BYTE interrupt){
-    mem->mem[0xFFFF] |= interrupt; 
+    mem->mem[0xFFFF - 0xC000] |= interrupt; 
 }
 
 void Mem_DisableInterrupt(MEMORY *mem, BYTE interrupt){
-    mem->mem[0xFFFF] &= ~(interrupt);
+    mem->mem[0xFFFF - 0xC000] &= ~(interrupt);
 }
 
 MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr){
