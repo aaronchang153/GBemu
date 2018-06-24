@@ -1,5 +1,4 @@
-#include "cpu.h"
-#include "memory.h"
+#include "gameboy.h"
 
 #include <stdio.h>
 
@@ -12,16 +11,12 @@ int main(){
     char game_file[128];
     printf("Enter path to game: ");
     scanf("%s", game_file);
-    CPU *cpu = CPU_Create();
-    MEMORY *memory = Mem_Create();
-    Mem_LoadGame(memory, game_file);
-    CPU_SetMemory(cpu, memory);
-    Mem_Startup(memory);
-    CPU_Startup(cpu);
+    GAMEBOY *gb = GB_Create();
+    GB_LoadGame(gb, game_file);
+    GB_Startup(gb);
 #ifdef DEBUG
-    Start_Debugger(cpu);
+    Start_Debugger(gb->cpu);
 #endif // DEBUG
-    CPU_Destroy(cpu);
-    Mem_Destroy(memory);
+    GB_Destroy(gb);
     return 0;
 }
