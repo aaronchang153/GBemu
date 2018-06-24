@@ -39,7 +39,7 @@ void Timer_Update(TIMER *t, unsigned int cycles){
         if(t->timer_counter <= 0){
             if(t->tima == 0xFF){
                 t->tima = t->tma;
-                /********** Request Interrupt **********/
+                Mem_RequestInterrupt(t->memory, IF_TIMER);
             }
             else{
                 t->tima++;
