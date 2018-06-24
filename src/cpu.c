@@ -45,6 +45,10 @@ void CPU_EmulateCycle(CPU *c){
     Decode_Execute(c);
 }
 
+unsigned int CPU_GetCycles(CPU *c){
+    return c->cycles;
+}
+
 void CPU_SetCycles(CPU *c, int cycles){
     c->cycles = cycles;
 }
