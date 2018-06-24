@@ -25,7 +25,7 @@ static inline bool CARRY_ADD16(WORD a, WORD b) { return (((uint32_t) a + (uint32
 // Control
 void NOP(CPU *c){
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void STOP(CPU *c){
@@ -39,7 +39,8 @@ void HALT(CPU *c){
 }
 
 void DI(CPU *c){
-    printf("DI: Unimplemented\n");
+    c->IME = false;
+    c->pc++;
 }
 
 void EI(CPU *c){
@@ -54,38 +55,38 @@ void RST(CPU *c){
 // Jumps
 void JP(CPU *c){
     c->pc = IMM16(c);
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void JP_cc(CPU *c, BYTE cond, bool not){
     if(CPU_CheckFlag(c, cond) != not){
         c->pc = IMM16(c);
-        CPU_UpdateClockTimer(c, CYCLES(4));
+        CPU_SetCycles(c, CYCLES(4));
     }
     else{
         c->pc += 3;
-        CPU_UpdateClockTimer(c, CYCLES(3));
+        CPU_SetCycles(c, CYCLES(3));
     }
 }
 
 void JP_HL(CPU *c){
     c->pc = c->hl.reg;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void JR(CPU *c){
-    c->pc = c->pc + (SIGNED_BYTE) IMM8(c);
-    CPU_UpdateClockTimer(c, CYCLES(3));
+    c->pc = c->pc + 2 + (SIGNED_BYTE) IMM8(c);
+    CPU_SetCycles(c, CYCLES(3));
 }
 
 void JR_cc(CPU *c, BYTE cond, bool not){
     if(CPU_CheckFlag(c, cond) != not){
-        c->pc = c->pc + (SIGNED_BYTE) IMM8(c);
-        CPU_UpdateClockTimer(c, CYCLES(3));
+        c->pc = c->pc + 2 + (SIGNED_BYTE) IMM8(c);
+        CPU_SetCycles(c, CYCLES(3));
     }
     else{
         c->pc += 2;
-        CPU_UpdateClockTimer(c, CYCLES(2));
+        CPU_SetCycles(c, CYCLES(2));
     }
 }
 
@@ -95,7 +96,7 @@ void CALL(CPU *c){
     Mem_WriteByte(c->memory, c->sp-2, LO(c->pc));
     c->pc = IMM16(c);
     c->sp -= 2;
-    CPU_UpdateClockTimer(c, CYCLES(6));
+    CPU_SetCycles(c, CYCLES(6));
 }
 
 void CALL_cc(CPU *c, BYTE cond, bool not){
@@ -104,11 +105,11 @@ void CALL_cc(CPU *c, BYTE cond, bool not){
         Mem_WriteByte(c->memory, c->sp-2, LO(c->pc));
         c->pc = IMM16(c);
         c->sp -= 2;
-        CPU_UpdateClockTimer(c, CYCLES(6));
+        CPU_SetCycles(c, CYCLES(6));
     }
     else{
         c->pc += 3;
-        CPU_UpdateClockTimer(c, CYCLES(3));
+        CPU_SetCycles(c, CYCLES(3));
     }
 }
 
@@ -116,18 +117,18 @@ void CALL_cc(CPU *c, BYTE cond, bool not){
 void RET(CPU *c){
     c->pc = Mem_ReadWord(c->memory, c->sp);
     c->sp += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void RET_cc(CPU *c, BYTE cond, bool not){
     if(CPU_CheckFlag(c, cond) != not){
         c->pc = Mem_ReadWord(c->memory, c->sp);
         c->sp += 2;
-        CPU_UpdateClockTimer(c, CYCLES(5));
+        CPU_SetCycles(c, CYCLES(5));
     }
     else{
         c->pc++;
-        CPU_UpdateClockTimer(c, CYCLES(2));
+        CPU_SetCycles(c, CYCLES(2));
     }
 }
 
@@ -139,78 +140,78 @@ void RETI(CPU *c){
 void LD_Imm8toReg8(CPU *c, BYTE *reg){
     *reg = IMM8(c);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void LD_Imm8toMem8(CPU *c, WORD addr){
     Mem_WriteByte(c->memory, addr, IMM8(c));
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(3));
+    CPU_SetCycles(c, CYCLES(3));
 }
 
 void LD_AtoMem8_addr(CPU *c, WORD addr){
     Mem_WriteByte(c->memory, addr, c->af.hi);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void LD_AtoMem8_imm(CPU *c){
     Mem_WriteByte(c->memory, IMM16(c), c->af.hi);
     c->pc += 3;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void LD_Mem8toA_addr(CPU *c, WORD addr){
     c->af.hi = Mem_ReadByte(c->memory, addr);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void LD_Mem8toA_imm(CPU *c){
     c->af.hi = Mem_ReadByte(c->memory, IMM16(c));
     c->pc += 3;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void LDI_toMem8(CPU *c){
     Mem_WriteByte(c->memory, c->hl.reg, c->af.hi);
     c->hl.reg++;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void LDI_toA(CPU *c){
     c->af.hi = Mem_ReadByte(c->memory, c->hl.reg);
     c->hl.reg++;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void LDD_toMem8(CPU *c){
     Mem_WriteByte(c->memory, c->hl.reg, c->af.hi);
     c->hl.reg--;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void LDD_toA(CPU *c){
     c->af.hi = Mem_ReadByte(c->memory, c->hl.reg);
     c->hl.reg--;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void LD_Reg8toReg8(CPU *c, BYTE *reg1, BYTE *reg2){
     *reg1 = *reg2;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void LD_Mem8toReg8_addr(CPU *c, BYTE *reg, WORD addr){
     // Only used to read from (HL)
     *reg = Mem_ReadByte(c->memory, addr);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 // void LD_Mem8toReg8_imm(CPU *c, BYTE *reg); >> Not needed
@@ -219,7 +220,7 @@ void LD_Reg8toMem8_addr(CPU *c, WORD addr, BYTE *reg){
     // Only used to write to (HL)
     Mem_WriteByte(c->memory, addr, *reg);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 // void LD_Reg8toMem8_imm(CPU *c, BYTE *reg); // Not needed
@@ -227,32 +228,32 @@ void LD_Reg8toMem8_addr(CPU *c, WORD addr, BYTE *reg){
 void LD_CtoA(CPU *c){
     c->af.hi = Mem_ReadByte(c->memory, 0xFF00 + c->bc.lo);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void LD_AtoC(CPU *c){
     Mem_WriteByte(c->memory, 0xFF00 + c->bc.lo, c->af.hi);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void LDH_NtoA(CPU *c){
     c->af.hi = Mem_ReadByte(c->memory, 0xFF00 + IMM8(c));
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(3));
+    CPU_SetCycles(c, CYCLES(3));
 }
 
 void LDH_AtoN(CPU *c){
     Mem_WriteByte(c->memory, 0xFF00 + IMM8(c), c->af.hi);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(3));
+    CPU_SetCycles(c, CYCLES(3));
 }
 
 // 16-bit Loads
 void LD_Imm16toReg16(CPU *c, WORD *reg){
     *reg = IMM16(c);
     c->pc += 3;
-    CPU_UpdateClockTimer(c, CYCLES(3));
+    CPU_SetCycles(c, CYCLES(3));
 }
 
 void LD_SPtoMem16(CPU *c){
@@ -260,13 +261,13 @@ void LD_SPtoMem16(CPU *c){
     Mem_WriteByte(c->memory, addr, LO(c->sp));
     Mem_WriteByte(c->memory, addr + 1, HI(c->sp));
     c->pc += 3;
-    CPU_UpdateClockTimer(c, CYCLES(5));
+    CPU_SetCycles(c, CYCLES(5));
 }
 
 void LD_HLtoSP(CPU *c){
     c->sp = c->hl.reg;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void LD_SPtoHL(CPU *c){
@@ -289,7 +290,7 @@ void LD_SPtoHL(CPU *c){
     }
     c->hl.reg = c->sp + (SIGNED_BYTE) e;
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(3));
+    CPU_SetCycles(c, CYCLES(3));
 }
 
 void PUSH(CPU *c, WORD *reg){
@@ -297,14 +298,14 @@ void PUSH(CPU *c, WORD *reg){
     Mem_WriteByte(c->memory, c->sp - 2, LO(*reg));
     c->sp -= 2;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void POP(CPU *c, WORD *reg){
     *reg = Mem_ReadWord(c->memory, c->sp);
     c->sp += 2;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(3));
+    CPU_SetCycles(c, CYCLES(3));
 }
 
 // 8-bit ALU (all of these operate on and store the result in A)
@@ -314,7 +315,7 @@ void ADDA_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, C_FLAG, CARRY_ADD(c->af.hi, *reg));
     CPU_SetFlag(c, Z_FLAG, (c->af.hi += *reg) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void ADDA_Mem8(CPU *c, WORD addr){
@@ -324,7 +325,7 @@ void ADDA_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, C_FLAG, CARRY_ADD(c->af.hi, data));
     CPU_SetFlag(c, Z_FLAG, (c->af.hi += data) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void ADDA_Imm8(CPU *c){
@@ -334,7 +335,7 @@ void ADDA_Imm8(CPU *c){
     CPU_SetFlag(c, C_FLAG, CARRY_ADD(c->af.hi, data));
     CPU_SetFlag(c, Z_FLAG, (c->af.hi += data) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void ADCA_Reg8(CPU *c, BYTE *reg){
@@ -354,7 +355,7 @@ void ADCA_Reg8(CPU *c, BYTE *reg){
     }
     CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void ADCA_Mem8(CPU *c, WORD addr){
@@ -375,7 +376,7 @@ void ADCA_Mem8(CPU *c, WORD addr){
     }
     CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void ADCA_Imm8(CPU *c){
@@ -396,7 +397,7 @@ void ADCA_Imm8(CPU *c){
     }
     CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void SUB_Reg8(CPU *c, BYTE *reg){
@@ -405,7 +406,7 @@ void SUB_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, *reg));
     CPU_SetFlag(c, Z_FLAG, (c->af.hi -= *reg) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void SUB_Mem8(CPU *c, WORD addr){
@@ -415,7 +416,7 @@ void SUB_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, data));
     CPU_SetFlag(c, Z_FLAG, (c->af.hi -= data) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void SUB_Imm8(CPU *c){
@@ -425,7 +426,7 @@ void SUB_Imm8(CPU *c){
     CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, data));
     CPU_SetFlag(c, Z_FLAG, (c->af.hi -= data) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void SBC_Reg8(CPU *c, BYTE *reg){
@@ -445,7 +446,7 @@ void SBC_Reg8(CPU *c, BYTE *reg){
     }
     CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void SBC_Mem8(CPU *c, WORD addr){
@@ -466,7 +467,7 @@ void SBC_Mem8(CPU *c, WORD addr){
     }
     CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void SBC_Imm8(CPU *c){
@@ -487,7 +488,7 @@ void SBC_Imm8(CPU *c){
     }
     CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void AND_Reg8(CPU *c, BYTE *reg){
@@ -495,7 +496,7 @@ void AND_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, H_FLAG, true);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi &= *reg) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void AND_Mem8(CPU *c, WORD addr){
@@ -504,7 +505,7 @@ void AND_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, H_FLAG, true);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi &= data) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void AND_Imm8(CPU *c){
@@ -513,14 +514,14 @@ void AND_Imm8(CPU *c){
     CPU_SetFlag(c, H_FLAG, true);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi &= data) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void XOR_Reg8(CPU *c, BYTE *reg){
     CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi ^= *reg) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void XOR_Mem8(CPU *c, WORD addr){
@@ -528,7 +529,7 @@ void XOR_Mem8(CPU *c, WORD addr){
     CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi ^= data) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void XOR_Imm8(CPU *c){
@@ -536,14 +537,14 @@ void XOR_Imm8(CPU *c){
     CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi ^= data) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void OR_Reg8(CPU *c, BYTE *reg){
     CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi |= *reg) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void OR_Mem8(CPU *c, WORD addr){
@@ -551,7 +552,7 @@ void OR_Mem8(CPU *c, WORD addr){
     CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi |= data) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void OR_Imm8(CPU *c){
@@ -559,7 +560,7 @@ void OR_Imm8(CPU *c){
     CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi |= data) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void CP_Reg8(CPU *c, BYTE *reg){
@@ -568,7 +569,7 @@ void CP_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, Z_FLAG, c->af.hi == *reg);
     CPU_SetFlag(c, C_FLAG, c->af.hi > *reg);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void CP_Mem8(CPU *c, WORD addr){
@@ -578,7 +579,7 @@ void CP_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, Z_FLAG, c->af.hi == data);
     CPU_SetFlag(c, C_FLAG, c->af.hi > data);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void CP_Imm8(CPU *c){
@@ -588,7 +589,7 @@ void CP_Imm8(CPU *c){
     CPU_SetFlag(c, Z_FLAG, c->af.hi == data);
     CPU_SetFlag(c, C_FLAG, c->af.hi > data);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void INC_Reg8(CPU *c, BYTE *reg){
@@ -596,7 +597,7 @@ void INC_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD(*reg, 1));
     CPU_SetFlag(c, Z_FLAG, ++(*reg) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void INC_Mem8(CPU *c, WORD addr){
@@ -606,7 +607,7 @@ void INC_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, Z_FLAG, ++data == 0);
     Mem_WriteByte(c->memory, addr, data);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(3));
+    CPU_SetCycles(c, CYCLES(3));
 }
 
 void DEC_Reg8(CPU *c, BYTE *reg){
@@ -614,7 +615,7 @@ void DEC_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(*reg, 1));
     CPU_SetFlag(c, Z_FLAG, --(*reg) == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void DEC_Mem8(CPU *c, WORD addr){
@@ -624,7 +625,7 @@ void DEC_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, Z_FLAG, --data == 0);
     Mem_WriteByte(c->memory, addr, data);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(3));
+    CPU_SetCycles(c, CYCLES(3));
 }
 
 // 16-bit ALU
@@ -634,7 +635,7 @@ void ADD_HL(CPU *c, WORD *reg){
     CPU_SetFlag(c, C_FLAG, CARRY_ADD16(c->hl.reg, *reg));
     c->hl.reg += (*reg);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void ADD_SP(CPU *c){
@@ -645,19 +646,19 @@ void ADD_SP(CPU *c){
     CPU_SetFlag(c, C_FLAG, CARRY_ADD16(c->sp, (WORD) data));
     c->sp += (SIGNED_WORD) data;
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void INC_Reg16(CPU *c, WORD *reg){
     (*reg)++;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void DEC_Reg16(CPU *c, WORD *reg){
     (*reg)--;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 // Rotates and shifts
@@ -667,7 +668,7 @@ void RLCA(CPU *c){
     CPU_SetFlag(c, C_FLAG, (rotate = c->af.hi >> 7) == 1);
     c->af.hi = (c->af.hi << 1) | rotate;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void RLA(CPU *c){
@@ -676,7 +677,7 @@ void RLA(CPU *c){
     CPU_SetFlag(c, C_FLAG, (c->af.hi >> 7) == 1);
     c->af.hi = (c->af.hi << 1) | rotate;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void RRCA(CPU *c){
@@ -685,7 +686,7 @@ void RRCA(CPU *c){
     CPU_SetFlag(c, C_FLAG, (rotate = c->af.hi & 0x01) == 1);
     c->af.hi = (c->af.hi >> 1) | (rotate << 7);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void RRA(CPU *c){
@@ -694,7 +695,7 @@ void RRA(CPU *c){
     CPU_SetFlag(c, C_FLAG, (c->af.hi & 0x01) == 1);
     c->af.hi = (c->af.hi >> 1) | rotate;
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 // CB Prefixed Rotates and Shifts
@@ -704,7 +705,7 @@ void RLC_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, C_FLAG, (rotate = (*reg) >> 7) == 1);
     CPU_SetFlag(c, Z_FLAG, (*reg = ((*reg) << 1) | rotate) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void RLC_Mem8(CPU *c, WORD addr){
@@ -715,7 +716,7 @@ void RLC_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, Z_FLAG, ((data = data << 1) | rotate) == 0);
     Mem_WriteByte(c->memory, addr, data);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void RRC_Reg8(CPU *c, BYTE *reg){
@@ -724,7 +725,7 @@ void RRC_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, C_FLAG, (rotate = (*reg) & 0x01) == 1);
     CPU_SetFlag(c, Z_FLAG, (*reg = ((*reg) >> 1) | (rotate << 7)) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void RRC_Mem8(CPU *c, WORD addr){
@@ -735,7 +736,7 @@ void RRC_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, Z_FLAG, (data = (data >> 1) | (rotate << 7)) == 0);
     Mem_WriteByte(c->memory, addr, data);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void RL_Reg8(CPU *c, BYTE *reg){
@@ -744,7 +745,7 @@ void RL_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, C_FLAG, ((*reg) >> 7) == 1);
     CPU_SetFlag(c, Z_FLAG, (*reg = ((*reg) << 1) | rotate) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void RL_Mem8(CPU *c, WORD addr){
@@ -755,7 +756,7 @@ void RL_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, Z_FLAG, (data = (data << 1) | rotate) == 0);
     Mem_WriteByte(c->memory, addr, data);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void RR_Reg8(CPU *c, BYTE *reg){
@@ -764,7 +765,7 @@ void RR_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, C_FLAG, ((*reg) & 0x01) == 1);
     CPU_SetFlag(c, Z_FLAG, (*reg = ((*reg) >> 1) | rotate) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void RR_Mem8(CPU *c, WORD addr){
@@ -775,7 +776,7 @@ void RR_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, Z_FLAG, (data = (data >> 1) | rotate) == 0);
     Mem_WriteByte(c->memory, addr, data);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void SLA_Reg8(CPU *c, BYTE *reg){
@@ -783,7 +784,7 @@ void SLA_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, C_FLAG, ((*reg) & 0x80) == 0x80);
     CPU_SetFlag(c, Z_FLAG, ((*reg) <<= 1) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void SLA_Mem8(CPU *c, WORD addr){
@@ -793,7 +794,7 @@ void SLA_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, Z_FLAG, (data <<= 1) == 0);
     Mem_WriteByte(c->memory, addr, data);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void SRA_Reg8(CPU *c, BYTE *reg){
@@ -802,7 +803,7 @@ void SRA_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, C_FLAG, ((*reg) & 0x01) == 0x01);
     CPU_SetFlag(c, Z_FLAG, (*reg = ((*reg) >> 1) | extend) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void SRA_Mem8(CPU *c, WORD addr){
@@ -813,14 +814,14 @@ void SRA_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, Z_FLAG, (data = (data >> 1) | extend) == 0);
     Mem_WriteByte(c->memory, addr, data);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void SWAP_Reg8(CPU *c, BYTE *reg){
     CPU_ClearFlag(c, C_FLAG | H_FLAG | N_FLAG);
     CPU_SetFlag(c, Z_FLAG, (*reg = (((*reg) & 0x0F) << 4) | (((*reg) & 0xF0) >> 4)) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void SWAP_Mem8(CPU *c, WORD addr){
@@ -829,7 +830,7 @@ void SWAP_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, Z_FLAG, (data = ((data & 0x0F) << 4) | ((data & 0xF0) >> 4)) == 0);
     Mem_WriteByte(c->memory, addr, data);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void SRL_Reg8(CPU *c, BYTE *reg){
@@ -837,7 +838,7 @@ void SRL_Reg8(CPU *c, BYTE *reg){
     CPU_SetFlag(c, C_FLAG, ((*reg) & 0x01) == 1);
     CPU_SetFlag(c, Z_FLAG, ((*reg) >>= 1) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void SRL_Mem8(CPU *c, WORD addr){
@@ -846,7 +847,7 @@ void SRL_Mem8(CPU *c, WORD addr){
     CPU_SetFlag(c, C_FLAG, (data & 0x01) == 1);
     CPU_SetFlag(c, Z_FLAG, (data >>= 1) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 // Bit Operations (CB Prefixed)
@@ -855,7 +856,7 @@ void BIT_Reg8(CPU *c, int bit, BYTE *reg){
     CPU_SetFlag(c, H_FLAG, true);
     CPU_SetFlag(c, Z_FLAG, ((*reg) & (0x01 << bit)) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void BIT_Mem8(CPU *c, int bit, WORD addr){
@@ -864,13 +865,13 @@ void BIT_Mem8(CPU *c, int bit, WORD addr){
     CPU_SetFlag(c, H_FLAG, true);
     CPU_SetFlag(c, Z_FLAG, (data & (0x01 << bit)) == 0);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(3));
+    CPU_SetCycles(c, CYCLES(3));
 }
 
 void SET_Reg8(CPU *c, int bit, BYTE *reg){
     (*reg) |= (0x01 << bit);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void SET_Mem8(CPU *c, int bit, WORD addr){
@@ -878,13 +879,13 @@ void SET_Mem8(CPU *c, int bit, WORD addr){
     data |= 0x01 << bit;
     Mem_WriteByte(c->memory, addr, data);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 void RES_Reg8(CPU *c, int bit, BYTE *reg){
     (*reg) &= ~(0x01 << bit);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(2));
+    CPU_SetCycles(c, CYCLES(2));
 }
 
 void RES_Mem8(CPU *c, int bit, WORD addr){
@@ -892,7 +893,7 @@ void RES_Mem8(CPU *c, int bit, WORD addr){
     data &= ~(0x01 << bit);
     Mem_WriteByte(c->memory, addr, data);
     c->pc += 2;
-    CPU_UpdateClockTimer(c, CYCLES(4));
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 // Misc.
@@ -927,7 +928,7 @@ void DAA(CPU *c){
     CPU_ClearFlag(c, H_FLAG);
     CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void CPL(CPU *c){
@@ -935,19 +936,19 @@ void CPL(CPU *c){
     CPU_SetFlag(c, H_FLAG | N_FLAG, true);
     c->af.hi = ~(c->af.hi);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 void CCF(CPU *c){
     // Complement carry flag
     CPU_ClearFlag(c, H_FLAG | N_FLAG);
     CPU_SetFlag(c, C_FLAG, !CPU_CheckFlag(c, C_FLAG));
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
 void SCF(CPU *c){
     // Set carry flag
     CPU_ClearFlag(c, H_FLAG | N_FLAG);
     CPU_SetFlag(c, C_FLAG, true);
     c->pc++;
-    CPU_UpdateClockTimer(c, CYCLES(1));
+    CPU_SetCycles(c, CYCLES(1));
 }
