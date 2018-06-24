@@ -30,7 +30,7 @@ struct cpu{
     REGISTER hl;
     bool halted;
     bool IME; // Interrupt Master Enable flag
-    unsigned short cycles;
+    unsigned int cycles;
 
     MEMORY *memory;
 };
@@ -50,6 +50,8 @@ void CPU_DecodeExecute(CPU *c);
 // Emulate a single instruction cycle
 // Just calls the above two functions in order
 void CPU_EmulateCycle(CPU *c);
+
+unsigned int CPU_GetCycles(CPU *c);
 
 void CPU_SetCycles(CPU *c, int cycles);
 
