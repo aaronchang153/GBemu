@@ -3,8 +3,9 @@
 
 #include <stdbool.h>
 
-#define CLK_F   4194304 // Hz
-#define CYCLE_F 1048576 // Hz
+#define CLK_F           4194304 // Hz
+#define CYCLE_F         1048576 // Hz
+#define UPDATES_PER_SEC      60
 
 // Important addresses in memory
 #define DIV_ADDR    0xFF04
