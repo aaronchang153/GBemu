@@ -55,8 +55,6 @@ unsigned int CPU_GetCycles(CPU *c);
 
 void CPU_SetCycles(CPU *c, int cycles);
 
-void CPU_SetInterrupt(CPU *c, bool e);
-
 static inline void CPU_SetFlag(CPU *c, BYTE flag, bool value) { c->af.lo = (value) ? (c->af.lo | flag) : (c->af.lo & (~flag)); }
 
 static inline void CPU_ClearFlag(CPU *c, BYTE flag) { c->af.lo &= (~flag); }

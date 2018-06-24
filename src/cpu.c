@@ -52,7 +52,3 @@ unsigned int CPU_GetCycles(CPU *c){
 void CPU_SetCycles(CPU *c, int cycles){
     c->cycles = cycles;
 }
-
-void CPU_SetInterrupt(CPU *c, bool e){
-
-}

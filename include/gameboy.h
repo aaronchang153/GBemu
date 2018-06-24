@@ -11,7 +11,6 @@ typedef struct{
     CPU *cpu;
     MEMORY *memory;
     TIMER *timer;
-    INTERRUPT_HANDLER *interrupt;
 } GAMEBOY;
 
 
