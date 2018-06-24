@@ -17,11 +17,12 @@ static void Print_CPU_State(CPU *c){
     printf("\tB: 0x%02x\t\tC: 0x%02x\n", c->bc.hi, c->bc.lo);
     printf("\tD: 0x%02x\t\tE: 0x%02x\n", c->de.hi, c->de.lo);
     printf("\tH: 0x%02x\t\tL: 0x%02x\n", c->hl.hi, c->hl.lo);
-    printf("FLAGS (Register F expanded):\n");
-    printf("\tZ: %d\n", CPU_CheckFlag(c, Z_FLAG));
-    printf("\tN: %d\n", CPU_CheckFlag(c, N_FLAG));
-    printf("\tH: %d\n", CPU_CheckFlag(c, H_FLAG));
-    printf("\tC: %d\n", CPU_CheckFlag(c, C_FLAG));
+    printf("FLAGS:\n");
+    printf("\tZ:   %d\n", CPU_CheckFlag(c, Z_FLAG));
+    printf("\tN:   %d\n", CPU_CheckFlag(c, N_FLAG));
+    printf("\tH:   %d\n", CPU_CheckFlag(c, H_FLAG));
+    printf("\tC:   %d\n", CPU_CheckFlag(c, C_FLAG));
+    printf("\tIME: %d\n", c->IME);
     printf("MISC:\n");
     printf("\tIMM8:  0x%02x\n", Mem_ReadByte(c->memory, c->pc+1));
     printf("\tIMM16: 0x%04x\n", Mem_ReadWord(c->memory, c->pc+1));
@@ -31,14 +32,41 @@ static void Print_CPU_State(CPU *c){
     printf("==================================================\n");
 }
 
+static void Dump_Memory(CPU *c){
+    FILE *fp = fopen("Mem_Dump.txt", "w");
+    MEM_REGION region;
+    BYTE content;
+    if(fp != NULL){
+        for(int i = 0; i < 0x10000; i++){
+            region = Mem_GetRegion(c->memory, (WORD) i);
+            if(region == ROM0)
+                content = (c->memory->rom0 == NULL) ? 0 : Mem_ReadByte(c->memory, i);
+            else if(region == ROMX)
+                content = (c->memory->romx == NULL) ? 0 : Mem_ReadByte(c->memory, i);
+            else if(region == SRAM)
+                content = (c->memory->sram == NULL) ? 0 : Mem_ReadByte(c->memory, i);
+            else
+                content = Mem_ReadByte(c->memory, i);
+            fprintf(fp, "0x%04x:\t0x%02x\n", i, content);
+        }
+        fclose(fp);
+        printf("Memory successfully dumped.\n");
+    }
+}
+
 void Enter_Debug_Mode(CPU *c){
+    char input;
     while(true){
         CPU_Fetch(c);
         Print_CPU_State(c);
-        CPU_DecodeExecute(c);
-        if(getchar() == 'Q'){
+        input = getchar();
+        if(input == 'q'){
             break;
         }
+        else if(input == 'D'){
+            Dump_Memory(c);
+        }
+        CPU_DecodeExecute(c);
     }
 }
 
