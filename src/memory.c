@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr);
-
 
 MEMORY *Mem_Create(){
     MEMORY *memory = malloc(sizeof(MEMORY));
@@ -103,10 +101,10 @@ void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
         case IO:
             switch(addr){
                 case DIV_ADDR:
-                    mem->system_counter = 0;
+                    mem->mem[addr - 0xC000] = 0;
                     break;
-                case TIMA_COUNTER_ADDR:
-                case TIMA_MODULO_ADDR:
+                case TIMA_ADDR:
+                case TMA_ADDR:
                 case IF_ADDR:
                     mem->mem[addr - 0xC000] = data;
                     break;
@@ -130,7 +128,6 @@ void Mem_WriteWord(MEMORY *mem, WORD addr, WORD data){
 
 BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
     // Sets Divider Register to the latest value before reading
-    mem->mem[DIV_ADDR - 0xC000] = mem->system_counter >> 8;
     MEM_REGION region = Mem_GetRegion(mem, addr);
     switch(region){
         case ROM0:
@@ -153,9 +150,7 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
         case UNUSED:
             return 0x00;
         case IO:
-            if(addr == DIV_ADDR || addr == TIMA_COUNTER_ADDR ||
-               addr == TIMA_MODULO_ADDR)
-            {
+            if(addr == DIV_ADDR || addr == TIMA_ADDR || addr == TMA_ADDR){
                 return mem->mem[addr - 0xC000];
             }
             else if(addr == TAC_ADDR){
@@ -185,7 +180,7 @@ void Mem_DisableInterrupt(MEMORY *mem, BYTE interrupt){
     mem->mem[0xFFFF] &= ~(interrupt);
 }
 
-static MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr){
+MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr){
     if(addr == 0xFFFF)
         return IE;
     else if(addr >= HRAM)
@@ -210,4 +205,26 @@ static MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr){
         return ROMX;
     else
         return ROM0;
+}
+
+void Mem_ForceWrite(MEMORY *mem, WORD addr, BYTE data){
+    switch(Mem_GetRegion(mem, addr)){
+        case SRAM:
+            mem->sram[addr - 0xA000] = data;
+            break;
+        case VRAM:
+            mem->vram[addr - 0x8000] = data;
+            break;
+        case WRAM0:
+        case WRAMX:
+        case ECHO:
+        case OAM:
+        case HRAM:
+        case IE:
+        case IO:
+            mem->mem[addr - 0xC000] = data;
+            break;
+        default:
+            printf("Address either cannot be reached or is part of the game ROM: 0x%04x\n", addr);
+    };
 }
