@@ -30,6 +30,7 @@ struct cpu{
     REGISTER hl;
     bool halted;
     bool IME; // Interrupt Master Enable flag
+    unsigned short cycles;
 
     MEMORY *memory;
 };
@@ -50,7 +51,7 @@ void CPU_DecodeExecute(CPU *c);
 // Just calls the above two functions in order
 void CPU_EmulateCycle(CPU *c);
 
-void CPU_UpdateClockTimer(CPU *c, int cycles);
+void CPU_SetCycles(CPU *c, int cycles);
 
 void CPU_SetInterrupt(CPU *c, bool e);
 
