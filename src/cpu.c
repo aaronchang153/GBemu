@@ -18,6 +18,7 @@ void CPU_Startup(CPU *c){
         c->bc.reg = 0x0013;
         c->de.reg = 0x00D8;
         c->hl.reg = 0x014D;
+        c->IME = false;
     }
 }
 
@@ -44,8 +45,8 @@ void CPU_EmulateCycle(CPU *c){
     Decode_Execute(c);
 }
 
-void CPU_UpdateClockTimer(CPU *c, int cycles){
-    c->memory->system_counter += cycles;
+void CPU_SetCycles(CPU *c, int cycles){
+    c->cycles = cycles;
 }
 
 void CPU_SetInterrupt(CPU *c, bool e){
