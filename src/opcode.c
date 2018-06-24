@@ -41,10 +41,13 @@ void HALT(CPU *c){
 void DI(CPU *c){
     c->IME = false;
     c->pc++;
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void EI(CPU *c){
-    printf("EI: Unimplemented\n");
+    c->IME = true;
+    c->pc++;
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 // Restart
@@ -133,7 +136,10 @@ void RET_cc(CPU *c, BYTE cond, bool not){
 }
 
 void RETI(CPU *c){
-    printf("RETI: Unimplemented\n");
+    c->pc = Mem_ReadWord(c->memory, c->sp);
+    c->sp += 2;
+    c->IME = true;
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 // 8-bit Loads
