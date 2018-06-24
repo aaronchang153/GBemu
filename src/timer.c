@@ -27,6 +27,7 @@ void Timer_Update(TIMER *t, unsigned int cycles){
     t->div = Mem_ReadByte(t->memory, DIV_ADDR);
     t->tima = Mem_ReadByte(t->memory, TIMA_ADDR);
     t->tma = Mem_ReadByte(t->memory, TMA_ADDR);
+    t->tac = Mem_ReadByte(t->memory, TAC_ADDR);
 
     if(t->div != (t->system_counter & 0xF0) >> 8){
         t->system_counter = 0;
