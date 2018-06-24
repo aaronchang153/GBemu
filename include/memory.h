@@ -50,9 +50,6 @@ typedef struct{
     BYTE vram[0x2000];  //   8 KB: VRAM
     BYTE *sram;         //   8 KB: Current external RAM
     BYTE mem[0x4000];   //  16 KB: Remaining memory
-
-    WORD system_counter;// Overall System Counter
-                        // 8 MSB mapped to 0xFF04
 } MEMORY;
 
 MEMORY *Mem_Create();
@@ -76,5 +73,9 @@ WORD Mem_ReadWord(MEMORY *mem, WORD addr);
 void Mem_EnableInterrupt(MEMORY *mem, BYTE interrupt);
 
 void Mem_DisableInterrupt(MEMORY *mem, BYTE interrupt);
+
+MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr);
+
+void Mem_ForceWrite(MEMORY *mem, WORD addr, BYTE data);
 
 #endif // MEMORY_H
