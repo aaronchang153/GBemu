@@ -53,7 +53,7 @@ void Timer_Update(TIMER *t, unsigned int cycles){
 }
 
 void Timer_ResetCounter(TIMER *t){
-    switch(Mem_ReadByte(t->memory, TAC_ADDR) & 0x03){
+    switch(t->tac & 0x03){
         case 0: // 4096   Hz
             t->timer_counter = 1024;
             break;
