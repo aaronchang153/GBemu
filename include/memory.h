@@ -24,6 +24,19 @@
  * 
  */
 
+// Important addresses in memory
+#define DIV_ADDR    0xFF04
+#define TIMA_ADDR   0xFF05
+#define TMA_ADDR    0xFF06
+#define TAC_ADDR    0xFF07
+#define IF_ADDR     0xFF0F
+#define IE_ADDR     0xFFFF
+
+#define DMA_ADDR    0xFF46
+
+#define LY_ADDR     0xFF44 // Current LCD scanline
+
+
 typedef enum{
     //BOOT    = 0x0000,
     ROM0    = 0x0000,
@@ -65,6 +78,8 @@ void Mem_Destroy(MEMORY *mem);
 void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data);
 
 void Mem_WriteWord(MEMORY *mem, WORD addr, WORD data);
+
+void Mem_DMATransfer(MEMORY *mem, BYTE data);
 
 BYTE Mem_ReadByte(MEMORY *mem, WORD addr);
 
