@@ -10,7 +10,10 @@ GAMEBOY *GB_Create(){
         gb->cpu = CPU_Create();
         gb->memory = Mem_Create();
         gb->timer = Timer_Create();
-        if(gb->cpu == NULL || gb->memory == NULL || gb->timer == NULL){
+        gb->graphics = Graphics_Create();
+        if(gb->cpu == NULL || gb->memory == NULL || gb->timer == NULL ||
+           gb->graphics == NULL)
+        {
             GB_Destroy(gb);
             gb = NULL;
         }
@@ -18,6 +21,7 @@ GAMEBOY *GB_Create(){
             // Connect all the components that need to be connected
             CPU_SetMemory(gb->cpu, gb->memory);
             Timer_SetMemory(gb->timer, gb->memory);
+            Graphics_SetMemory(gb->graphics, gb->memory);
         }
     }
     return gb;
@@ -28,6 +32,7 @@ void GB_Destroy(GAMEBOY *gb){
         CPU_Destroy(gb->cpu);
         Mem_Destroy(gb->memory);
         Timer_Destroy(gb->timer);
+        Graphics_Destroy(gb->graphics);
         free(gb);
     }
 }
@@ -54,7 +59,7 @@ void GB_Update(GAMEBOY *gb){
         cycles = CPU_GetCycles(gb->cpu);
         total_cycles += cycles;
         Timer_Update(gb->timer, cycles);
-        /****** Update Graphics ******/
+        Graphics_Update(gb->graphics, cycles);
         Interrupt_Handle(gb->cpu);
     }
     /***** Render Screen *****/

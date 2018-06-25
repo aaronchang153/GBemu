@@ -5,12 +5,14 @@
 #include "memory.h"
 #include "timer.h"
 #include "interrupt.h"
+#include "graphics.h"
 
 
 typedef struct{
     CPU *cpu;
     MEMORY *memory;
     TIMER *timer;
+    GRAPHICS *graphics;
 } GAMEBOY;
 
 
