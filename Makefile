@@ -1,6 +1,6 @@
 INCLUDE = -I include -I include/debug
 CFLAGS  = -Wall -g -DDEBUG
-OBJECT_FILES = obj/main.o obj/cpu.o obj/decode.o obj/opcode.o obj/memory.o obj/timer.o obj/interrupt.o obj/gameboy.o
+OBJECT_FILES = obj/main.o obj/cpu.o obj/decode.o obj/opcode.o obj/memory.o obj/timer.o obj/interrupt.o obj/graphics.o obj/gameboy.o
 
 all : GBemu
 
@@ -22,15 +22,18 @@ timer.o : src/timer.c include/timer.h
 interrupt.o : src/interrupt.c include/interrupt.h
 	gcc $(INCLUDE) $(CFLAGS) -c src/interrupt.c -o obj/interrupt.o
 
+graphics.o : src/graphics.c include/graphics.h
+	gcc $(INCLUDE) $(CFLAGS) -c src/graphics.c -o obj/graphics.o
+
 gameboy.o : src/gameboy.c include/gameboy.h
 	gcc $(INCLUDE) $(CFLAGS) -c src/gameboy.c -o obj/gameboy.o
 
 main.o : main.c
 	gcc $(INCLUDE) $(CFLAGS) -c main.c -o obj/main.o
 
-objects : cpu.o opcode.o decode.o memory.o timer.o interrupt.o gameboy.o main.o
+objects : cpu.o opcode.o decode.o memory.o timer.o interrupt.o graphics.o gameboy.o main.o
 
-GBemu_Debug : cpu.o opcode.o decode.o memory.o timer.o interrupt.o gameboy.o main.o
+GBemu_Debug : cpu.o opcode.o decode.o memory.o timer.o interrupt.o graphics.o gameboy.o main.o
 	gcc $(INCLUDE) $(CFLAGS) -c src/debug/disassemble.c -o obj/disassemble.o
 	gcc $(INCLUDE) $(CFLAGS) -c src/debug/cpudebug.c -o obj/cpudebug.o
 	gcc $(INCLUDE) $(CFLAGS) $(OBJECT_FILES) obj/disassemble.o obj/cpudebug.o -o bin/GBemu_Debug.exe
