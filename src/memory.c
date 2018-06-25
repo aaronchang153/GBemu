@@ -43,37 +43,37 @@ void Mem_Startup(MEMORY *mem){
     if(mem != NULL && mem->game_rom != NULL){
         mem->rom0 = mem->game_rom;
         mem->romx = mem->game_rom + 0x4000;
-        Mem_WriteByte(mem, 0xFF05, 0x00); // TIMA
-        Mem_WriteByte(mem, 0xFF06, 0x00); // TMA
-        Mem_WriteByte(mem, 0xFF07, 0x00); // TAC
-        Mem_WriteByte(mem, 0xFF10, 0x80); // NR10
-        Mem_WriteByte(mem, 0xFF11, 0xBF); // NR11
-        Mem_WriteByte(mem, 0xFF12, 0xF3); // NR12
-        Mem_WriteByte(mem, 0xFF14, 0xBF); // NR14
-        Mem_WriteByte(mem, 0xFF16, 0x3F); // NR21
-        Mem_WriteByte(mem, 0xFF17, 0x00); // NR22
-        Mem_WriteByte(mem, 0xFF19, 0xBF); // NR24
-        Mem_WriteByte(mem, 0xFF1A, 0x7F); // NR30
-        Mem_WriteByte(mem, 0xFF1B, 0xFF); // NR31
-        Mem_WriteByte(mem, 0xFF1C, 0x9F); // NR32
-        Mem_WriteByte(mem, 0xFF1E, 0xBF); // NR33
-        Mem_WriteByte(mem, 0xFF20, 0xFF); // NR41
-        Mem_WriteByte(mem, 0xFF21, 0x00); // NR42
-        Mem_WriteByte(mem, 0xFF22, 0x00); // NR43
-        Mem_WriteByte(mem, 0xFF23, 0xBF); // NR44
-        Mem_WriteByte(mem, 0xFF24, 0x77); // NR50
-        Mem_WriteByte(mem, 0xFF25, 0xF3); // NR51
-        Mem_WriteByte(mem, 0xFF26, 0xF1), // NR52
-        Mem_WriteByte(mem, 0xFF40, 0x91); // LCDC
-        Mem_WriteByte(mem, 0xFF42, 0x00); // SCY
-        Mem_WriteByte(mem, 0xFF43, 0x00); // SCX
-        Mem_WriteByte(mem, 0xFF45, 0x00); // LYC
-        Mem_WriteByte(mem, 0xFF47, 0xFC); // BGP
-        Mem_WriteByte(mem, 0xFF48, 0xFF); // OBP0
-        Mem_WriteByte(mem, 0xFF49, 0xFF); // OBP1
-        Mem_WriteByte(mem, 0xFF4A, 0x00); // WY
-        Mem_WriteByte(mem, 0xFF4B, 0x00); // WX
-        Mem_WriteByte(mem, 0xFFFF, 0x00); // IE
+        Mem_ForceWrite(mem, 0xFF05, 0x00); // TIMA
+        Mem_ForceWrite(mem, 0xFF06, 0x00); // TMA
+        Mem_ForceWrite(mem, 0xFF07, 0x00); // TAC
+        Mem_ForceWrite(mem, 0xFF10, 0x80); // NR10
+        Mem_ForceWrite(mem, 0xFF11, 0xBF); // NR11
+        Mem_ForceWrite(mem, 0xFF12, 0xF3); // NR12
+        Mem_ForceWrite(mem, 0xFF14, 0xBF); // NR14
+        Mem_ForceWrite(mem, 0xFF16, 0x3F); // NR21
+        Mem_ForceWrite(mem, 0xFF17, 0x00); // NR22
+        Mem_ForceWrite(mem, 0xFF19, 0xBF); // NR24
+        Mem_ForceWrite(mem, 0xFF1A, 0x7F); // NR30
+        Mem_ForceWrite(mem, 0xFF1B, 0xFF); // NR31
+        Mem_ForceWrite(mem, 0xFF1C, 0x9F); // NR32
+        Mem_ForceWrite(mem, 0xFF1E, 0xBF); // NR33
+        Mem_ForceWrite(mem, 0xFF20, 0xFF); // NR41
+        Mem_ForceWrite(mem, 0xFF21, 0x00); // NR42
+        Mem_ForceWrite(mem, 0xFF22, 0x00); // NR43
+        Mem_ForceWrite(mem, 0xFF23, 0xBF); // NR44
+        Mem_ForceWrite(mem, 0xFF24, 0x77); // NR50
+        Mem_ForceWrite(mem, 0xFF25, 0xF3); // NR51
+        Mem_ForceWrite(mem, 0xFF26, 0xF1), // NR52
+        Mem_ForceWrite(mem, 0xFF40, 0x91); // LCDC
+        Mem_ForceWrite(mem, 0xFF42, 0x00); // SCY
+        Mem_ForceWrite(mem, 0xFF43, 0x00); // SCX
+        Mem_ForceWrite(mem, 0xFF45, 0x00); // LYC
+        Mem_ForceWrite(mem, 0xFF47, 0xFC); // BGP
+        Mem_ForceWrite(mem, 0xFF48, 0xFF); // OBP0
+        Mem_ForceWrite(mem, 0xFF49, 0xFF); // OBP1
+        Mem_ForceWrite(mem, 0xFF4A, 0x00); // WY
+        Mem_ForceWrite(mem, 0xFF4B, 0x00); // WX
+        Mem_ForceWrite(mem, 0xFFFF, 0x00); // IE
     }
 }
 
@@ -98,19 +98,22 @@ void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
         case OAM:
         case HRAM:
         case IE:
+            mem->mem[addr - 0xC000] = data;
+            break;
         case IO:
             switch(addr){
                 case DIV_ADDR:
+                case LY_ADDR:
                     mem->mem[addr - 0xC000] = 0;
                     break;
-                case TIMA_ADDR:
-                case TMA_ADDR:
-                case IF_ADDR:
-                    mem->mem[addr - 0xC000] = data;
-                    break;
-                case TAC_ADDR:
+                case TAC_ADDR: // Write first 3 bits only
                     mem->mem[addr - 0xC000] = data & 0x07;
                     break;
+                case DMA_ADDR:
+                    Mem_DMATransfer(mem, data);
+                    break;
+                default:
+                    mem->mem[addr - 0xC000] = data;
             };
             break;
         case ECHO:
@@ -124,6 +127,13 @@ void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
 void Mem_WriteWord(MEMORY *mem, WORD addr, WORD data){
     Mem_WriteByte(mem, addr, data & 0x00FF);
     Mem_WriteByte(mem, addr + 1, (data & 0xFF00) >> 8);
+}
+
+void Mem_DMATransfer(MEMORY *mem, BYTE data){
+    WORD addr = data << 8;
+    for(int i = 0; i < 0xA0; i++){
+        Mem_WriteByte(mem, addr, Mem_ReadByte(mem, addr + i));
+    }
 }
 
 BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
