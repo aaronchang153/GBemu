@@ -7,14 +7,6 @@
 #define CYCLE_F         1048576 // Hz
 #define UPDATES_PER_SEC      60
 
-// Important addresses in memory
-#define DIV_ADDR    0xFF04
-#define TIMA_ADDR   0xFF05
-#define TMA_ADDR    0xFF06
-#define TAC_ADDR    0xFF07
-#define IF_ADDR     0xFF0F
-#define IE_ADDR     0xFFFF
-
 // Commonly used types
 typedef unsigned char BYTE;
 typedef char SIGNED_BYTE;
