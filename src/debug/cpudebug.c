@@ -39,12 +39,10 @@ static void Dump_Memory(CPU *c){
     if(fp != NULL){
         for(int i = 0; i < 0x10000; i++){
             region = Mem_GetRegion(c->memory, (WORD) i);
-            if(region == ROM0)
-                content = (c->memory->rom0 == NULL) ? 0 : Mem_ReadByte(c->memory, i);
-            else if(region == ROMX)
-                content = (c->memory->romx == NULL) ? 0 : Mem_ReadByte(c->memory, i);
+            if(region == ROM0 || region == ROMX)
+                content = (c->memory->cartridge == NULL) ? 0 : Cartridge_ReadROM(c->memory->cartridge, i);
             else if(region == SRAM)
-                content = (c->memory->sram == NULL) ? 0 : Mem_ReadByte(c->memory, i);
+                content = (c->memory->cartridge == NULL) ? 0 : Cartridge_ReadRAM(c->memory->cartridge, i);
             else
                 content = Mem_ReadByte(c->memory, i);
             fprintf(fp, "0x%04x:\t0x%02x\n", i, content);
@@ -70,7 +68,7 @@ void Enter_Debug_Mode(CPU *c){
     }
 }
 
-void Start_Debugger(CPU *c){
+void Start_CPU_Debugger(CPU *c){
     int mode;
     int bp;
     printf("Enter debug mode: [1] Line-By-Line [2] Break [3] Normal\n");

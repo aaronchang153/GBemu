@@ -6,7 +6,7 @@
 #include "common.h"
 #include "cpu.h"
 
-void Start_Debugger(CPU *c);
+void Start_CPU_Debugger(CPU *c);
 
 #endif // DEBUG
 
