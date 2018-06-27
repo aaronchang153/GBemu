@@ -9,40 +9,26 @@ MEMORY *Mem_Create(){
     MEMORY *memory = malloc(sizeof(MEMORY));
     if(memory != NULL){
         memset(memory, 0, sizeof(MEMORY));
+        if((memory->cartridge = Cartridge_Create()) == NULL){
+            Mem_Destroy(memory);
+            memory = NULL;
+        }
     }
     return memory;
 }
 
 void Mem_LoadGame(MEMORY *mem, char *filename){
-    if(mem != NULL && filename != NULL){
-        Mem_UnloadGame(mem);
-        FILE *fp = fopen(filename, "rb");
-        if(fp != NULL){
-            fseek(fp, 0L, SEEK_END);
-            size_t size = ftell(fp);
-            rewind(fp);
-            mem->game_rom = malloc(size);
-            if(mem->game_rom != NULL){
-                for(int i = 0; i < size; i++){
-                    fread(mem->game_rom + i, 1, 1, fp);
-                }
-            }
-            fclose(fp);
-        }
-    }
+    Cartridge_LoadGame(mem->cartridge, filename);
 }
 
 void Mem_UnloadGame(MEMORY *mem){
-    if(mem != NULL && mem->game_rom != NULL){
-        free(mem->game_rom);
-        mem->game_rom = NULL;
-    }
+    Cartridge_UnloadGame(mem->cartridge);
 }
 
 void Mem_Startup(MEMORY *mem){
-    if(mem != NULL && mem->game_rom != NULL){
-        mem->rom0 = mem->game_rom;
-        mem->romx = mem->game_rom + 0x4000;
+    if(mem != NULL){
+        Cartridge_Init(mem->cartridge);
+
         Mem_ForceWrite(mem, 0xFF05, 0x00); // TIMA
         Mem_ForceWrite(mem, 0xFF06, 0x00); // TMA
         Mem_ForceWrite(mem, 0xFF07, 0x00); // TAC
@@ -79,16 +65,19 @@ void Mem_Startup(MEMORY *mem){
 
 void Mem_Destroy(MEMORY *mem){
     if(mem != NULL){
-        if(mem->game_rom != NULL)
-            free(mem->game_rom);
+        Cartridge_Destroy(mem->cartridge);
         free(mem);
     }
 }
 
 void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
     switch(Mem_GetRegion(mem, addr)){
+        case ROM0:
+        case ROMX:
+            Cartridge_SwitchBank(mem->cartridge, addr, data);
+            break;
         case SRAM:
-            mem->sram[addr - 0xA000] = data;
+            Cartridge_WriteRAM(mem->cartridge, addr, data);
             break;
         case VRAM:
             mem->vram[addr - 0x8000] = data;
@@ -141,11 +130,10 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
     MEM_REGION region = Mem_GetRegion(mem, addr);
     switch(region){
         case ROM0:
-            return mem->rom0[addr];
         case ROMX:
-            return mem->romx[addr - 0x4000];
+            return Cartridge_ReadROM(mem->cartridge, addr);
         case SRAM:
-            return mem->sram[addr - 0xA000];
+            return Cartridge_ReadRAM(mem->cartridge, addr);
         case VRAM:
             return mem->vram[addr - 0x8000];
         case WRAM0:
@@ -160,17 +148,15 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
         case UNUSED:
             return 0x00;
         case IO:
-            if(addr == DIV_ADDR || addr == TIMA_ADDR || addr == TMA_ADDR){
-                return mem->mem[addr - 0xC000];
-            }
-            else if(addr == TAC_ADDR){
+            if(addr == TAC_ADDR){
                 return mem->mem[addr - 0xC000] & 0x07;
             }
             else if(addr == IF_ADDR){
                 return mem->mem[addr - 0xC000] | 0xE0;
             }
             else{
-                return 0x01;
+                return mem->mem[addr - 0xC000];
+                //return 0x01;
             }
         default:
             printf("Invalid read address: 0x%x\n", addr);
@@ -223,9 +209,6 @@ MEM_REGION Mem_GetRegion(MEMORY *mem, WORD addr){
 
 void Mem_ForceWrite(MEMORY *mem, WORD addr, BYTE data){
     switch(Mem_GetRegion(mem, addr)){
-        case SRAM:
-            mem->sram[addr - 0xA000] = data;
-            break;
         case VRAM:
             mem->vram[addr - 0x8000] = data;
             break;
@@ -239,6 +222,6 @@ void Mem_ForceWrite(MEMORY *mem, WORD addr, BYTE data){
             mem->mem[addr - 0xC000] = data;
             break;
         default:
-            printf("Address either cannot be reached or is part of the game ROM: 0x%04x\n", addr);
+            printf("Address either cannot be reached or is part of the game cartridge: 0x%04x\n", addr);
     };
 }
