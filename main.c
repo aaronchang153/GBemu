@@ -16,6 +16,10 @@ int main(){
     GB_Startup(gb);
 #ifdef DEBUG
     Start_Debugger(gb->cpu);
+#else
+    while(true){
+        GB_Update(gb);
+    }
 #endif // DEBUG
     GB_Destroy(gb);
     return 0;
