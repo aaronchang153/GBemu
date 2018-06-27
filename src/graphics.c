@@ -3,6 +3,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+static BYTE MapColor(int color, BYTE palette){
+    BYTE value = (palette & (0x3 << ((color - 1) * 2))) >> ((color - 1) * 2);
+    if(value == 0)
+        return 255;
+    else if(value == 1)
+        return 192;
+    else if(value == 2)
+        return 96;
+    else
+        return 0;
+}
+
 
 GRAPHICS *Graphics_Create(){
     GRAPHICS *graphics = malloc(sizeof(GRAPHICS));
@@ -114,5 +126,105 @@ void Graphics_UpdateLCDSTAT(GRAPHICS *g){
 }
 
 void Graphics_DrawScanline(GRAPHICS *g){
+    BYTE control = Mem_ReadByte(g->memory, LCDC_ADDR);
+    if(TEST_BIT(control, 0)){
+        // Bit 0 is the BG enable
+        Graphics_RenderTiles(g, control);
+    }
+    if(TEST_BIT(control, 1)){
+        // Bit 1 is the Sprite enable
+        Graphics_RenderSprites(g, control);
+    }
+}
+
+void Graphics_RenderTiles(GRAPHICS *g, BYTE lcdc){
+    WORD tile_data; // For location of tile informatorn
+    WORD tile_map;  // For description of what tile goes where
+    
+    BYTE scanline = Mem_ReadByte(g->memory, LY_ADDR);
+    BYTE scrollY  = Mem_ReadByte(g->memory, SCY_ADDR);
+    BYTE scrollX  = Mem_ReadByte(g->memory, SCX_ADDR);
+    BYTE windowY  = Mem_ReadByte(g->memory, WY_ADDR);
+    BYTE windowX  = Mem_ReadByte(g->memory, WY_ADDR) - 7;
+
+    bool tileID_signed = false;
+
+    bool window = false;
+    if(TEST_BIT(lcdc, 5) && windowY <= scanline){
+        window = true;
+    }
+
+    if(TEST_BIT(lcdc, 4)){
+        tile_data = 0x8000;
+    }
+    else{
+        tile_data = 0x8800;
+        tileID_signed = true;
+    }
+
+    if(!window){
+        if(TEST_BIT(lcdc, 3)){
+            tile_map = 0x9C00;
+        }
+        else{
+            tile_map = 0x9800;
+        }
+    }
+
+    BYTE yPos;
+    BYTE xPos;
+    if(!window){
+        yPos = scrollY + scanline;
+    }
+    else{
+        yPos = scanline - windowY;
+    }
+
+    WORD tile_row = (yPos / 8) * 32;
+    WORD tile_col;
+    WORD tile_addr;
+    WORD tile_data_addr;
+    SIGNED_WORD tileID;
+
+    for(int pixel = 0; pixel < SCREEN_WIDTH; pixel++){
+        xPos = pixel + scrollX;
+        if(window && pixel >= windowX){
+            xPos = pixel - windowX;
+        }
+
+        tile_col = xPos / 8;
+        tile_addr = tile_map + tile_row + tile_col;
+        if(tileID_signed){
+            tileID = (SIGNED_BYTE) Mem_ReadByte(g->memory, tile_addr);
+        }
+        else{
+            tileID = Mem_ReadByte(g->memory, tile_addr);
+        }
+
+        tile_data_addr = tile_data;
+        if(tileID_signed){
+            tile_data_addr += (tileID + 128) * 16;
+        }
+        else{
+            tile_data_addr += tileID * 16;
+        }
+
+        BYTE line = (yPos % 8) * 2;
+        BYTE color_data1 = Mem_ReadByte(g->memory, line);
+        BYTE color_data2 = Mem_ReadByte(g->memory, line + 1);
+
+        // Pixel 0 maps to bit 7, pixel 1 to bit 6, etc.
+        SIGNED_BYTE color_bit = 0 - ((xPos % 8) - 7);
+
+        int color_num = ((color_data2 & (0x01 << color_bit)) == 0) ? 0x00 : 0x02;
+        color_num |= ((color_data1 & (0x01 << color_bit)) == 0) ? 0x00 : 0x01;
+
+        g->frame_buffer[pixel][scanline].r = 
+            g->frame_buffer[pixel][scanline].g = 
+            g->frame_buffer[pixel][scanline].b = MapColor(color_num, Mem_ReadByte(g->memory, BGP_ADDR));
+    }
+}
+
+void Graphics_RenderSprites(GRAPHICS *g, BYTE lcdc){
 
 }
