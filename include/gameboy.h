@@ -6,6 +6,7 @@
 #include "timer.h"
 #include "interrupt.h"
 #include "graphics.h"
+#include "display.h"
 
 
 typedef struct{
@@ -13,6 +14,7 @@ typedef struct{
     MEMORY *memory;
     TIMER *timer;
     GRAPHICS *graphics;
+    DISPLAY *display;
 } GAMEBOY;
 
 
