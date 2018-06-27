@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #ifdef DEBUG
-#include "cpudebug.h"
+#include "gbdebug.h"
 #endif // DEBUG
 
 
@@ -15,7 +15,7 @@ int main(){
     GB_LoadGame(gb, game_file);
     GB_Startup(gb);
 #ifdef DEBUG
-    Start_Debugger(gb->cpu);
+    Start_Debugger(gb);
 #else
     while(true){
         GB_Update(gb);
