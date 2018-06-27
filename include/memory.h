@@ -2,6 +2,7 @@
 #define MEMORY_H
 
 #include "common.h"
+#include "cartridge.h"
 
 /*
  * DMG Memory Map:
@@ -55,14 +56,12 @@ typedef enum{
 
 // 64 KB Byte-Addressable Memory
 typedef struct{
-    //bool startup;
-    //BYTE boot[0x100];   // 256  B: Boot ROM
-    BYTE *game_rom;     //         Entire game cartridge
-    BYTE *rom0;         //  16 KB: Unswitchable ROM bank 0
-    BYTE *romx;         //  16 KB: Current (switable) ROM bank
-    BYTE vram[0x2000];  //   8 KB: VRAM
-    BYTE *sram;         //   8 KB: Current external RAM
-    BYTE mem[0x4000];   //  16 KB: Remaining memory
+    CARTRIDGE *cartridge; // Contains the entire game rom and keeps track of:
+                          // 16 KB: Unswitchable ROM bank 0
+                          // 16 KB: Switchable ROM bank
+                          //  8 KB: Switchable RAM bank
+    BYTE vram[0x2000];    //  8 KB: VRAM
+    BYTE mem[0x4000];     // 16 KB: Remaining memory
 } MEMORY;
 
 MEMORY *Mem_Create();
