@@ -39,7 +39,6 @@
 
 
 typedef enum{
-    //BOOT    = 0x0000,
     ROM0    = 0x0000,
     ROMX    = 0x4000,
     VRAM    = 0x8000,
