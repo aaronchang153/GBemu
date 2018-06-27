@@ -126,7 +126,6 @@ void Mem_DMATransfer(MEMORY *mem, BYTE data){
 }
 
 BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
-    // Sets Divider Register to the latest value before reading
     MEM_REGION region = Mem_GetRegion(mem, addr);
     switch(region){
         case ROM0:
