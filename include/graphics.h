@@ -64,4 +64,8 @@ void Graphics_UpdateLCDSTAT(GRAPHICS *g);
 
 void Graphics_DrawScanline(GRAPHICS *g);
 
+void Graphics_RenderTiles(GRAPHICS *g, BYTE lcdc);
+
+void Graphics_RenderSprites(GRAPHICS *g, BYTE lcdc);
+
 #endif // GRAPHICS_H
