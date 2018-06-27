@@ -2,10 +2,8 @@
 #define GRAPHICS_H
 
 #include "common.h"
+#include "display.h"
 #include "memory.h"
-
-#define SCREEN_WIDTH  160
-#define SCREEN_HEIGHT 144
 
 #define VBLANK_END    153
 
@@ -38,15 +36,10 @@
 
 
 typedef struct{
-    BYTE r;
-    BYTE g;
-    BYTE b;
-} PIXEL;
-
-typedef struct{
     int scanline_counter;
     PIXEL frame_buffer[SCREEN_WIDTH][SCREEN_HEIGHT];
     MEMORY *memory;
+    DISPLAY *display;
 } GRAPHICS;
 
 
@@ -56,7 +49,11 @@ void Graphics_Destroy(GRAPHICS *g);
 
 void Graphics_SetMemory(GRAPHICS *g, MEMORY *mem);
 
+void Graphics_SetDisplay(GRAPHICS *g, DISPLAY *d);
+
 void Graphics_Update(GRAPHICS *g, int cycles);
+
+void Graphics_RenderScreen(GRAPHICS *g);
 
 bool Graphics_LCDEnabled(GRAPHICS *g);
 
