@@ -35,6 +35,10 @@ void Graphics_SetMemory(GRAPHICS *g, MEMORY *mem){
     g->memory = mem;
 }
 
+void Graphics_SetDisplay(GRAPHICS *g, DISPLAY *d){
+    g->display = d;
+}
+
 void Graphics_Update(GRAPHICS *g, int cycles){
     Graphics_UpdateLCDSTAT(g);
 
@@ -60,6 +64,10 @@ void Graphics_Update(GRAPHICS *g, int cycles){
             }
         }
     }
+}
+
+void Graphics_RenderScreen(GRAPHICS *g){
+    Display_RenderScreen(g->display, g->frame_buffer);
 }
 
 bool Graphics_LCDEnabled(GRAPHICS *g){
@@ -225,6 +233,82 @@ void Graphics_RenderTiles(GRAPHICS *g, BYTE lcdc){
     }
 }
 
-void Graphics_RenderSprites(GRAPHICS *g, BYTE lcdc){
+void Graphics_RenderSprites(GRAPHICS *g, BYTE lcdc)
+{
+    // Double height sprites are 8x16 (as opposed to 8x8)
+    bool double_height = false;
 
+    BYTE scanline = Mem_ReadByte(g->memory, LY_ADDR);
+
+    if (TEST_BIT(lcdc, 2))
+        double_height = true;
+
+    for (int sprite = 0; sprite < 40; sprite++)
+    {
+        // sprite occupies 4 bytes in the sprite attributes table
+        BYTE index = sprite * 4;
+        BYTE yPos = Mem_ReadByte(g->memory, 0xFE00 + index) - 16;
+        BYTE xPos = Mem_ReadByte(g->memory, 0xFE00 + index + 1) - 8;
+        BYTE tileLocation = Mem_ReadByte(g->memory, 0xFE00 + index + 2);
+        BYTE attributes = Mem_ReadByte(g->memory, 0xFE00 + index + 3);
+
+        bool yFlip = TEST_BIT(attributes, 6);
+        bool xFlip = TEST_BIT(attributes, 5);
+
+        int ysize = 8;
+        if (double_height)
+            ysize = 16;
+
+        // does this sprite intercept with the scanline?
+        if ((scanline >= yPos) && (scanline < (yPos + ysize)))
+        {
+            int line = scanline - yPos;
+
+            // read the sprite in backwards in the y axis
+            if (yFlip)
+            {
+                line -= ysize;
+                line *= -1;
+            }
+
+            line *= 2; // same as for tiles
+            WORD dataAddress = (0x8000 + (tileLocation * 16)) + line;
+            BYTE data1 = Mem_ReadByte(g->memory, dataAddress);
+            BYTE data2 = Mem_ReadByte(g->memory, dataAddress + 1);
+
+            // its easier to read in from right to left as pixel 0 is
+            // bit 7 in the colour data, pixel 1 is bit 6 etc...
+            for (int tilePixel = 7; tilePixel >= 0; tilePixel--)
+            {
+                int colourbit = tilePixel;
+                // read the sprite in backwards for the x axis
+                if (xFlip)
+                {
+                    colourbit -= 7;
+                    colourbit *= -1;
+                }
+
+                // the rest is the same as for tiles
+                int colourNum = (TEST_BIT(data2, colourbit)) ? 1 : 0;
+                colourNum <<= 1;
+                colourNum |= (TEST_BIT(data1, colourbit)) ? 1 : 0;
+
+                WORD colourAddress = TEST_BIT(attributes, 4) ? 0xFF49 : 0xFF48;
+                BYTE col = MapColor(colourNum, colourAddress);
+
+                // white is transparent for sprites.
+                if (col == 255)
+                    continue;
+
+                int xPix = 0 - tilePixel;
+                xPix += 7;
+
+                int pixel = xPos + xPix;
+
+                g->frame_buffer[pixel][scanline].r = 
+                    g->frame_buffer[pixel][scanline].g = 
+                    g->frame_buffer[pixel][scanline].b = col;
+            }
+        }
+    }
 }
