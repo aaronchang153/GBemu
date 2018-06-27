@@ -1,5 +1,5 @@
 INCLUDE = -I include -I include/debug
-CFLAGS  = -Wall -g# -DDEBUG
+CFLAGS  = -Wall -g -DDEBUG
 OBJECT_FILES = obj/main.o obj/cpu.o obj/decode.o obj/opcode.o obj/memory.o obj/cartridge.o obj/timer.o obj/interrupt.o obj/graphics.o obj/gameboy.o
 
 all : GBemu
@@ -38,8 +38,8 @@ objects : cpu.o opcode.o decode.o memory.o cartridge.o timer.o interrupt.o graph
 
 GBemu_Debug : cpu.o opcode.o decode.o memory.o cartridge.o timer.o interrupt.o graphics.o gameboy.o main.o
 	gcc $(INCLUDE) $(CFLAGS) -c src/debug/disassemble.c -o obj/disassemble.o
-	gcc $(INCLUDE) $(CFLAGS) -c src/debug/cpudebug.c -o obj/cpudebug.o
-	gcc $(INCLUDE) $(CFLAGS) $(OBJECT_FILES) obj/disassemble.o obj/cpudebug.o -o bin/GBemu_Debug.exe
+	gcc $(INCLUDE) $(CFLAGS) -c src/debug/gbdebug.c -o obj/gbdebug.o
+	gcc $(INCLUDE) $(CFLAGS) $(OBJECT_FILES) obj/disassemble.o obj/gbdebug.o -o bin/GBemu_Debug.exe
 
 clean : 
 	rm -f obj/*.o
