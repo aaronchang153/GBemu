@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "cartridge.h"
+#include "joypad.h"
 
 /*
  * DMG Memory Map:
@@ -37,6 +38,8 @@
 
 #define LY_ADDR     0xFF44 // Current LCD scanline
 
+#define P1_ADDR     0xFF00 // Joypad state
+
 
 typedef enum{
     ROM0    = 0x0000,
@@ -61,6 +64,7 @@ typedef struct{
                           //  8 KB: Switchable RAM bank
     BYTE vram[0x2000];    //  8 KB: VRAM
     BYTE mem[0x4000];     // 16 KB: Remaining memory
+    JOYPAD *joypad;
 } MEMORY;
 
 MEMORY *Mem_Create();
@@ -72,6 +76,8 @@ void Mem_UnloadGame(MEMORY *mem);
 void Mem_Startup(MEMORY *mem);
 
 void Mem_Destroy(MEMORY *mem);
+
+void Mem_SetJoypad(MEMORY *mem, JOYPAD *j);
 
 void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data);
 
