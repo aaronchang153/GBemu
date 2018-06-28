@@ -9,7 +9,7 @@
 
 #define WINDOW_NAME "GBemu"
 
-#define PIXEL_SIZE 4
+#define PIXEL_SIZE 2
 
 typedef struct{
     BYTE r;
