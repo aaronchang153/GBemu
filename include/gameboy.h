@@ -7,6 +7,7 @@
 #include "interrupt.h"
 #include "graphics.h"
 #include "display.h"
+#include "joypad.h"
 
 
 typedef struct{
@@ -15,6 +16,7 @@ typedef struct{
     TIMER *timer;
     GRAPHICS *graphics;
     DISPLAY *display;
+    JOYPAD *joypad;
 } GAMEBOY;
 
 
