@@ -27,6 +27,15 @@ int SDL_main(int argc, char *argv[]){
                 case SDL_QUIT:
                     running = false;
                     break;
+                case SDL_KEYDOWN:
+                    if(Joypad_SetState(gb->joypad, event, JOYPAD_PRESSED, Mem_ReadByte(gb->memory, P1_ADDR))){
+                        // If there's a joypad interrupt
+                        Mem_RequestInterrupt(gb->memory, IF_JOYPAD);
+                    }
+                    break;
+                case SDL_KEYUP:
+                    Joypad_SetState(gb->joypad, event, JOYPAD_NOT_PRESSED, Mem_ReadByte(gb->memory, P1_ADDR));
+                    break;
             };
         }
         GB_Update(gb);
