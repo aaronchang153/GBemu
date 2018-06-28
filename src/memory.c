@@ -70,6 +70,10 @@ void Mem_Destroy(MEMORY *mem){
     }
 }
 
+void Mem_SetJoypad(MEMORY *mem, JOYPAD *j){
+    mem->joypad = j;
+}
+
 void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
     switch(Mem_GetRegion(mem, addr)){
         case ROM0:
@@ -91,6 +95,10 @@ void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
             break;
         case IO:
             switch(addr){
+                case P1_ADDR:
+                    // Don't write the lower 4 bits
+                    mem->mem[addr - 0xC000] = data & 0xF0;
+                    break;
                 case DIV_ADDR:
                 case LY_ADDR:
                     mem->mem[addr - 0xC000] = 0;
@@ -147,7 +155,10 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
         case UNUSED:
             return 0x00;
         case IO:
-            if(addr == TAC_ADDR){
+            if(addr == P1_ADDR){
+                return Joypad_GetState(mem->joypad, mem->mem[addr - 0xC000]);
+            }
+            else if(addr == TAC_ADDR){
                 return mem->mem[addr - 0xC000] & 0x07;
             }
             else if(addr == IF_ADDR){
