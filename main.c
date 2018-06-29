@@ -12,7 +12,13 @@ int SDL_main(int argc, char *argv[]){
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     char game_file[128];
     printf("Enter path to game: ");
-    scanf("%s", game_file);
+    fgets(game_file, 128, stdin);
+    for(int i = 0; i < 128; i++){
+        if(game_file[i] == '\n'){
+            game_file[i] = '\0';
+            break;
+        }
+    }
     GAMEBOY *gb = GB_Create();
     GB_LoadGame(gb, game_file);
     GB_Startup(gb);
