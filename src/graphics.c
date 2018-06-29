@@ -3,16 +3,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-static BYTE MapColor(int color, BYTE palette){
+static int MapColor(int color, BYTE palette){
     BYTE value = (palette & (0x3 << ((color - 1) * 2))) >> ((color - 1) * 2);
     if(value == 0)
-        return 255;
+        return WHITE;
     else if(value == 1)
-        return 192;
+        return LIGHT_GRAY;
     else if(value == 2)
-        return 96;
+        return DARK_GRAY;
     else
-        return 0;
+        return BLACK;
 }
 
 
@@ -146,6 +146,12 @@ void Graphics_DrawScanline(GRAPHICS *g){
 }
 
 void Graphics_RenderTiles(GRAPHICS *g, BYTE lcdc){
+    /**
+     * One tile is 8px X 8px
+     * Entire screen is 256 px(32 tiles) X 256 px(32 tiles)
+     * Visible screen is 160 px(20 tiles) X 144 px (18 tiles)
+     * Each tile in memory occupies 16 bytes (2 bytes/tile)
+     */
     WORD tile_data; // For location of tile informatorn
     WORD tile_map;  // For description of what tile goes where
     
@@ -156,27 +162,25 @@ void Graphics_RenderTiles(GRAPHICS *g, BYTE lcdc){
     BYTE windowX  = Mem_ReadByte(g->memory, WY_ADDR) - 7;
 
     bool tileID_signed = false;
-
     bool window = false;
+
     if(TEST_BIT(lcdc, 5) && windowY <= scanline){
         window = true;
     }
 
-    if(TEST_BIT(lcdc, 4)){
+    if(TEST_BIT(lcdc, 4)){ // Tile data 0x8000-0x8FFF
         tile_data = 0x8000;
     }
-    else{
+    else{ // Tile data 0x8800-0x97FF
         tile_data = 0x8800;
         tileID_signed = true;
     }
 
-    if(!window){
-        if(TEST_BIT(lcdc, 3)){
-            tile_map = 0x9C00;
-        }
-        else{
-            tile_map = 0x9800;
-        }
+    if(window){
+        tile_map = (TEST_BIT(lcdc, 6)) ? 0x9C00 : 0x9800;
+    }
+    else{
+        tile_map = (TEST_BIT(lcdc, 3)) ? 0x9C00 : 0x9800;
     }
 
     BYTE yPos;
@@ -188,6 +192,7 @@ void Graphics_RenderTiles(GRAPHICS *g, BYTE lcdc){
         yPos = scanline - windowY;
     }
 
+    // x32 because there's 32 tiles per row
     WORD tile_row = (yPos / 8) * 32;
     WORD tile_col;
     WORD tile_addr;
@@ -227,9 +232,7 @@ void Graphics_RenderTiles(GRAPHICS *g, BYTE lcdc){
         int color_num = ((color_data2 & (0x01 << color_bit)) == 0) ? 0x00 : 0x02;
         color_num |= ((color_data1 & (0x01 << color_bit)) == 0) ? 0x00 : 0x01;
 
-        g->frame_buffer[pixel][scanline].r = 
-            g->frame_buffer[pixel][scanline].g = 
-            g->frame_buffer[pixel][scanline].b = MapColor(color_num, Mem_ReadByte(g->memory, BGP_ADDR));
+        g->frame_buffer[pixel][scanline].color = MapColor(color_num, Mem_ReadByte(g->memory, BGP_ADDR));
     }
 }
 
