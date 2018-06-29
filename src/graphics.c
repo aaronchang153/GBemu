@@ -90,7 +90,7 @@ void Graphics_UpdateLCDSTAT(GRAPHICS *g){
         BYTE current_mode = status & 0x03;
 
         BYTE next_mode;
-        bool interrupt;
+        bool interrupt = false;
 
         if(current_line >= SCREEN_HEIGHT){
             next_mode = MODE_VBLANK;
