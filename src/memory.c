@@ -117,7 +117,9 @@ void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
             mem->mem[addr - 0xE000] = data;
             break;
         default:
-            printf("Unable to write to address: 0x%04x\n", addr);
+            // Tetris still tries to write here so I guess it's not a big deal
+            // printf("Unable to write to address: 0x%04x\n", addr);
+            break;
     };
 }
 
