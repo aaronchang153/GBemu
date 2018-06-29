@@ -462,7 +462,7 @@ void SUB_Imm8(CPU *c){
     CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(c->af.hi, data));
     CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, data));
     CPU_SetFlag(c, Z_FLAG, (c->af.hi -= data) == 0);
-    c->pc++;
+    c->pc += 2;
     CPU_SetCycles(c, CYCLES(2));
 }
 
@@ -550,7 +550,7 @@ void AND_Imm8(CPU *c){
     CPU_ClearFlag(c, C_FLAG | N_FLAG);
     CPU_SetFlag(c, H_FLAG, true);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi &= data) == 0);
-    c->pc++;
+    c->pc += 2;
     CPU_SetCycles(c, CYCLES(2));
 }
 
