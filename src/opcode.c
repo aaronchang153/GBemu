@@ -95,6 +95,7 @@ void JR_cc(CPU *c, BYTE cond, bool not){
 
 // Calls
 void CALL(CPU *c){
+    c->pc += 3;
     Mem_WriteByte(c->memory, c->sp-1, HI(c->pc));
     Mem_WriteByte(c->memory, c->sp-2, LO(c->pc));
     c->pc = IMM16(c);
@@ -103,6 +104,7 @@ void CALL(CPU *c){
 }
 
 void CALL_cc(CPU *c, BYTE cond, bool not){
+    c->pc += 3;
     if(CPU_CheckFlag(c, cond) != not){
         Mem_WriteByte(c->memory, c->sp-1, HI(c->pc));
         Mem_WriteByte(c->memory, c->sp-2, LO(c->pc));
@@ -111,7 +113,6 @@ void CALL_cc(CPU *c, BYTE cond, bool not){
         CPU_SetCycles(c, CYCLES(6));
     }
     else{
-        c->pc += 3;
         CPU_SetCycles(c, CYCLES(3));
     }
 }
