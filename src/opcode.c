@@ -52,7 +52,38 @@ void EI(CPU *c){
 
 // Restart
 void RST(CPU *c){
-    printf("RST: Unimplemented\n");
+    c->pc++;
+    Mem_WriteByte(c->memory, c->sp-1, HI(c->pc));
+    Mem_WriteByte(c->memory, c->sp-2, LO(c->pc));
+    c->sp -= 2;
+    // Look at bits 5, 4, 3
+    switch((c->ir & 0x38) >> 3){
+        case 0:
+            c->pc = 0x0000;
+            break;
+        case 1:
+            c->pc = 0x0008;
+            break;
+        case 2:
+            c->pc = 0x0010;
+            break;
+        case 3:
+            c->pc = 0x0018;
+            break;
+        case 4:
+            c->pc = 0x0020;
+            break;
+        case 5:
+            c->pc = 0x0028;
+            break;
+        case 6:
+            c->pc = 0x0030;
+            break;
+        case 7:
+            c->pc = 0x0038;
+            break;
+    };
+    CPU_SetCycles(c, CYCLES(4));
 }
 
 // Jumps
@@ -95,24 +126,23 @@ void JR_cc(CPU *c, BYTE cond, bool not){
 
 // Calls
 void CALL(CPU *c){
-    c->pc += 3;
-    Mem_WriteByte(c->memory, c->sp-1, HI(c->pc));
-    Mem_WriteByte(c->memory, c->sp-2, LO(c->pc));
+    Mem_WriteByte(c->memory, c->sp-1, HI(c->pc+3));
+    Mem_WriteByte(c->memory, c->sp-2, LO(c->pc+3));
     c->pc = IMM16(c);
     c->sp -= 2;
     CPU_SetCycles(c, CYCLES(6));
 }
 
 void CALL_cc(CPU *c, BYTE cond, bool not){
-    c->pc += 3;
     if(CPU_CheckFlag(c, cond) != not){
-        Mem_WriteByte(c->memory, c->sp-1, HI(c->pc));
-        Mem_WriteByte(c->memory, c->sp-2, LO(c->pc));
+        Mem_WriteByte(c->memory, c->sp-1, HI(c->pc+3));
+        Mem_WriteByte(c->memory, c->sp-2, LO(c->pc+3));
         c->pc = IMM16(c);
         c->sp -= 2;
         CPU_SetCycles(c, CYCLES(6));
     }
     else{
+        c->pc += 3;
         CPU_SetCycles(c, CYCLES(3));
     }
 }
