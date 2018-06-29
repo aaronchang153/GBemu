@@ -5,7 +5,38 @@
 #include "disassemble.h"
 
 #include <stdio.h>
+#include <string.h>
 
+static const int CYCLES_PER_UPDATE = CLK_F / UPDATES_PER_SEC;
+static void Get_Command(GAMEBOY *gb, int *counter, int *bp, bool *cont, bool *running);
+
+static int power(int x, int n){
+    if(n == 0)
+        return 1;
+    return x * power(x, n-1);
+}
+
+static int Parse_Hex(char *in){
+    if(in == NULL){
+        return 0;
+    }
+    else{
+        int result = 0;
+        int place = 0;
+        for(int i = strlen(in) - 1; i >= 0; i--){
+            if(in[i] == '\n')
+                continue;
+            else if(in[i] >= 65 && in[i] <= 70) // A-F
+                result += (in[i] - 55) * power(16, place);
+            else if(in[i] >= 97 && in[i] <= 102) // a-f
+                result += (in[i] - 87) * power(16, place);
+            else if(in[i] >= 48 && in[i] <= 57) // 0-9
+                result += (in[i] - 48) * power(16, place);
+            place++;
+        }
+        return result;
+    }
+}
 
 static void Print_State(CPU *c){
     printf("==================================================\n");
@@ -52,56 +83,110 @@ static void Dump_Memory(CPU *c){
     }
 }
 
-static void GB_Update_Debug(GAMEBOY *gb){
-    // Same as regular GB_Update, but it only does one cycle
-        CPU_EmulateCycle(gb->cpu);
-        int cycles = CPU_GetCycles(gb->cpu);
-        Timer_Update(gb->timer, cycles);
-        Graphics_Update(gb->graphics, cycles);
-        Interrupt_Handle(gb->cpu);
-}
-
 void Enter_Debug_Mode(GAMEBOY *gb){
     char input;
-    int cycles;
     while(true){
-        CPU_Fetch(gb->cpu);
-        Print_State(gb->cpu);
-        input = getchar();
-        if(input == 'q'){
+        unsigned int total_cycles = 0;
+        unsigned int cycles;
+
+        while(total_cycles < CYCLES_PER_UPDATE){
+            CPU_Fetch(gb->cpu);
+            Print_State(gb->cpu);
+            input = getchar();
+            if(input == 'q'){
+                break;
+            }
+            else if(input == 'D'){
+                Dump_Memory(gb->cpu);
+            }
+            CPU_DecodeExecute(gb->cpu);
+            cycles = CPU_GetCycles(gb->cpu);
+            total_cycles += cycles;
+            Timer_Update(gb->timer, cycles);
+            Graphics_Update(gb->graphics, cycles);
+            Interrupt_Handle(gb->cpu);
+        }
+        Graphics_RenderScreen(gb->graphics);
+        if(total_cycles < CYCLES_PER_UPDATE){
             break;
         }
-        else if(input == 'D'){
-            Dump_Memory(gb->cpu);
-        }
-        CPU_DecodeExecute(gb->cpu);
-        cycles = CPU_GetCycles(gb->cpu);
-        Timer_Update(gb->timer, cycles);
-        Graphics_Update(gb->graphics, cycles);
-        Interrupt_Handle(gb->cpu);
     }
 }
 
 void Start_Debugger(GAMEBOY *gb){
-    int mode;
     int bp;
-    printf("Enter debug mode: [1] Line-By-Line [2] Break [3] Normal\n");
-    scanf("%d", &mode);
-    if(mode == 1){
-        Enter_Debug_Mode(gb);
-    }
-    else if(mode == 2){
-        printf("Break at PC = ");
-        scanf("%d", &bp);
-        while(gb->cpu->pc != bp){
-            GB_Update_Debug(gb);
+    int counter = 0;
+    bool cont = false;
+    unsigned int total_cycles = 0;
+    unsigned int cycles;
+    SDL_Event event;
+    bool running = true;
+    while(running){
+        while(SDL_PollEvent(&event)){
+            // For the sake of time, handle all pending events at once when debugging
+            switch(event.type){
+                case SDL_QUIT:
+                    running = false;
+                    break;
+                case SDL_KEYDOWN:
+                    if(Joypad_SetState(gb->joypad, event, JOYPAD_PRESSED, Mem_ReadByte(gb->memory, P1_ADDR))){
+                        // If there's a joypad interrupt
+                        Mem_RequestInterrupt(gb->memory, IF_JOYPAD);
+                    }
+                    break;
+                case SDL_KEYUP:
+                    Joypad_SetState(gb->joypad, event, JOYPAD_NOT_PRESSED, Mem_ReadByte(gb->memory, P1_ADDR));
+                    break;
+            };
         }
-        Enter_Debug_Mode(gb);
-    }
-    else if(mode == 3){
-        while(true){
-            GB_Update_Debug(gb);
+        total_cycles = 0;
+        while(total_cycles < CYCLES_PER_UPDATE){
+            CPU_Fetch(gb->cpu);
+
+            if(gb->cpu->pc == bp)
+                cont = false;
+            if(!cont){
+                Print_State(gb->cpu);
+                Get_Command(gb, &counter, &bp, &cont, &running);
+                if(!running)
+                    break;
+            }
+            //counter = (counter <= 0) ? counter : counter - 1;
+
+            CPU_DecodeExecute(gb->cpu);
+            cycles = CPU_GetCycles(gb->cpu);
+            total_cycles += cycles;
+            Timer_Update(gb->timer, cycles);
+            Graphics_Update(gb->graphics, cycles);
+            Interrupt_Handle(gb->cpu);
         }
+        Graphics_RenderScreen(gb->graphics);
+        if(total_cycles < CYCLES_PER_UPDATE){
+            break;
+        }
+        SDL_Delay(30);
+    }
+}
+
+static void Get_Command(GAMEBOY *gb, int *counter, int *bp, bool *cont, bool *running){
+    char input[16];
+    char *tok;
+    fgets(input, 16, stdin);
+    if(input[0] == 'q'){
+        *running = false;
+    }
+    else if(input[0] == 'D'){
+        Dump_Memory(gb->cpu);
+    }
+    else if(input[0] == 'b'){
+        tok = strtok(input, " ");
+        tok = strtok(NULL, " ");
+        *bp = Parse_Hex(tok);
+        *cont = true;
+    }
+    else if(input[0] == 'C'){
+        *bp = -1;
+        *cont = true;
     }
 }
 
