@@ -18,7 +18,7 @@
 //       down from the clocks per scanline.
 // OAM search mode lasts the first 80 clock cycles, lcd 
 // transfer mode takes the next 172 clock cycles, and 
-// HBLANK (not listed) takes the rest.
+// HBLANK (not listed) takes the remining 204 clock cycles.
 #define MODE_SEARCH_END   (CLK_PER_SCANLINE - 80)
 #define MODE_TRANSFER_END (MODE_SEARCH_END - 172)
 
