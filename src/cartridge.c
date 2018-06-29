@@ -108,7 +108,7 @@ BYTE Cartridge_ReadROM(CARTRIDGE *cart, WORD addr){
     if(addr < 0x4000)
         return cart->game_rom[addr];
     else if((addr >= 0x4000) && (addr < 0x8000))
-        return cart->game_rom[(addr - 0x4000) + (cart->current_ram_bank * ROM_BANK_SIZE)];
+        return cart->game_rom[(addr - 0x4000) + (cart->current_rom_bank * ROM_BANK_SIZE)];
     else
         return 0;
 }
