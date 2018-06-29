@@ -11,10 +11,22 @@
 
 #define PIXEL_SIZE 2
 
+static const unsigned int TRANSPARENT   = 0x00000000;
+static const unsigned int WHITE         = 0xFFFFFFFF;
+static const unsigned int LIGHT_GRAY    = 0xC0C0C0FF;
+static const unsigned int DARK_GRAY     = 0x606060FF;
+static const unsigned int BLACK         = 0x000000FF;
+
 typedef struct{
-    BYTE r;
-    BYTE g;
-    BYTE b;
+    union{
+        struct{
+            BYTE a;
+            BYTE b;
+            BYTE g;
+            BYTE r;
+        };
+        unsigned int color;
+    };
 } PIXEL;
 
 typedef struct{
