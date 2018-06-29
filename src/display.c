@@ -40,7 +40,7 @@ void Display_RenderScreen(DISPLAY *d, PIXEL frame[SCREEN_WIDTH][SCREEN_HEIGHT]){
 
     for(j = 0; j < SCREEN_HEIGHT; j++){
         for(i = 0; i < SCREEN_WIDTH; i++){
-            SDL_SetRenderDrawColor(d->renderer, frame[i][j].r, frame[i][j].g, frame[i][j].b, 0xFF);
+            SDL_SetRenderDrawColor(d->renderer, frame[i][j].r, frame[i][j].g, frame[i][j].b, frame[i][j].a);
             pixel.x = i * PIXEL_SIZE;
             pixel.y = j * PIXEL_SIZE;
             pixel.w = PIXEL_SIZE;
