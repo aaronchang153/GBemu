@@ -1,5 +1,5 @@
 INCLUDE = -I include -I include/debug -I SDL2/include/SDL2 -L SDL2/lib
-CFLAGS  = -Wall -g -c# -DDEBUG
+CFLAGS  = -Wall -g -c -DDEBUG
 LFLAGS = -Wall -g -lmingw32 -lSDL2main -lSDL2# -Wl,-subsystem,windows
 OBJECT_FILES = obj/main.o obj/cpu.o obj/decode.o obj/opcode.o obj/memory.o obj/cartridge.o obj/timer.o obj/interrupt.o obj/graphics.o obj/display.o obj/joypad.o obj/gameboy.o
 
