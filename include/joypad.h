@@ -12,8 +12,8 @@ typedef struct{
         struct{
             BYTE a      : 1;
             BYTE b      : 1;
-            BYTE start  : 1;
             BYTE select : 1;
+            BYTE start  : 1;
             BYTE right  : 1;
             BYTE left   : 1;
             BYTE up     : 1;
