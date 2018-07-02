@@ -76,7 +76,7 @@ static void Dump_Memory(CPU *c){
                 content = (c->memory->cartridge == NULL) ? 0 : Cartridge_ReadRAM(c->memory->cartridge, i);
             else
                 content = Mem_ReadByte(c->memory, i);
-            fprintf(fp, "0x%04x:\t0x%02x\n", i, content);
+            fprintf(fp, "0x%04X:\t0x%02X\n", i, content);
         }
         fclose(fp);
         printf("Memory successfully dumped.\n");
