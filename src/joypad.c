@@ -20,9 +20,9 @@ void Joypad_Destroy(JOYPAD *j){
 }
 
 BYTE Joypad_GetState(JOYPAD *j, BYTE p1){
-    if(TEST_BIT(p1, 4))
+    if(!TEST_BIT(p1, 4))
         return (p1 & 0xF0) | ((j->state & 0xF0) >> 4);
-    else if(TEST_BIT(p1, 5))
+    else if(!TEST_BIT(p1, 5))
         return (p1 & 0xF0) | (j->state & 0x0F);
     else
         return p1;
@@ -49,9 +49,9 @@ static int MapKeyPress(SDL_Event e){
             return 0;
         case SDL_SCANCODE_K: // B
             return 1;
-        case SDL_SCANCODE_B: // START
-            return 2;
         case SDL_SCANCODE_V: // SELECT
+            return 2;
+        case SDL_SCANCODE_B: // START
             return 3;
         case SDL_SCANCODE_D: // RIGHT
             return 4;
