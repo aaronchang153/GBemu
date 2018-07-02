@@ -26,7 +26,6 @@ void Interrupt_Handle(CPU *c){
                 requests &= ~(IF_JOYPAD); // Clear corresponding flag
                 ServiceInterrupt(c, JOYPAD_ROUTINE);
             }
-            c->IME = false;
         }
         Mem_WriteByte(c->memory, IF_ADDR, requests);
     }
@@ -39,4 +38,5 @@ static void ServiceInterrupt(CPU *c, WORD service_routine){
     c->sp -= 2;
     c->pc = service_routine;
     c->cycles += 3 * 4;
+    c->IME = false;
 }
