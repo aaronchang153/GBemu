@@ -155,11 +155,11 @@ void Graphics_RenderTiles(GRAPHICS *g, BYTE lcdc){
     WORD tile_data; // For location of tile informatorn
     WORD tile_map;  // For description of what tile goes where
     
-    BYTE scanline = Mem_ReadByte(g->memory, LY_ADDR);
+    BYTE scanline = Mem_ReadByte(g->memory, LY_ADDR) - 1;
     BYTE scrollY  = Mem_ReadByte(g->memory, SCY_ADDR);
     BYTE scrollX  = Mem_ReadByte(g->memory, SCX_ADDR);
     BYTE windowY  = Mem_ReadByte(g->memory, WY_ADDR);
-    BYTE windowX  = Mem_ReadByte(g->memory, WY_ADDR) - 7;
+    BYTE windowX  = Mem_ReadByte(g->memory, WX_ADDR) - 7;
 
     bool tileID_signed = false;
     bool window = false;
@@ -223,14 +223,14 @@ void Graphics_RenderTiles(GRAPHICS *g, BYTE lcdc){
         }
 
         BYTE line = (yPos % 8) * 2;
-        BYTE color_data1 = Mem_ReadByte(g->memory, line);
-        BYTE color_data2 = Mem_ReadByte(g->memory, line + 1);
+        BYTE color_data1 = Mem_ReadByte(g->memory, tile_data_addr + line);
+        BYTE color_data2 = Mem_ReadByte(g->memory, tile_data_addr + line + 1);
 
         // Pixel 0 maps to bit 7, pixel 1 to bit 6, etc.
-        SIGNED_BYTE color_bit = 0 - ((xPos % 8) - 7);
+        int color_bit = ~((xPos % 8) - 7) + 1;
 
-        int color_num = ((color_data2 & (0x01 << color_bit)) == 0) ? 0x00 : 0x02;
-        color_num |= ((color_data1 & (0x01 << color_bit)) == 0) ? 0x00 : 0x01;
+        int color_num = (TEST_BIT(color_data2, color_bit)) ? 0x02 : 0x00;
+        color_num += (TEST_BIT(color_data1, color_bit)) ? 0x01 : 0x00;
 
         g->frame_buffer[pixel][scanline].color = MapColor(color_num, Mem_ReadByte(g->memory, BGP_ADDR));
     }
