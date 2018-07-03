@@ -129,9 +129,9 @@ void Mem_WriteWord(MEMORY *mem, WORD addr, WORD data){
 }
 
 void Mem_DMATransfer(MEMORY *mem, BYTE data){
-    WORD addr = data << 8;
+    WORD src = data << 8;
     for(int i = 0; i < 0xA0; i++){
-        Mem_WriteByte(mem, addr, Mem_ReadByte(mem, addr + i));
+        Mem_WriteByte(mem, 0xFE00 + i, Mem_ReadByte(mem, src + i));
     }
 }
 
