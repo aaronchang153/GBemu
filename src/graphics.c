@@ -4,7 +4,7 @@
 #include <string.h>
 
 static unsigned int MapColor(int color, BYTE palette){
-    BYTE value = (palette & (0x3 << (color * 2))) >> (color * 2);
+    BYTE value = (palette >> (color * 2)) & 0x03;
     if(value == 0)
         return WHITE;
     else if(value == 1)
