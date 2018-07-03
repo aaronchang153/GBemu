@@ -166,6 +166,7 @@ void Start_Debugger(GAMEBOY *gb){
         }
         SDL_Delay(30);
     }
+    Dump_Memory(gb->cpu);
 }
 
 static void Get_Command(GAMEBOY *gb, int *counter, int *bp, bool *cont, bool *running){
