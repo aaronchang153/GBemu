@@ -19,6 +19,8 @@ void CPU_Startup(CPU *c){
         c->de.reg = 0x00D8;
         c->hl.reg = 0x014D;
         c->IME = false;
+        c->halt = false;
+        c->stop = false;
     }
 }
 
@@ -37,12 +39,16 @@ void CPU_Fetch(CPU *c){
 }
 
 void CPU_DecodeExecute(CPU *c){
-    Decode_Execute(c);
+    if(!c->halt && !c->stop){
+        Decode_Execute(c);
+    }
 }
 
 void CPU_EmulateCycle(CPU *c){
-    c->ir = Mem_ReadByte(c->memory, c->pc);
-    Decode_Execute(c);
+    if(!c->halt && !c->stop){
+        c->ir = Mem_ReadByte(c->memory, c->pc);
+        Decode_Execute(c);
+    }
 }
 
 unsigned int CPU_GetCycles(CPU *c){
