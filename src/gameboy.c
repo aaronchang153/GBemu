@@ -61,10 +61,16 @@ void GB_Update(GAMEBOY *gb){
     unsigned int cycles;
 
     while(total_cycles < CYCLES_PER_UPDATE){
-        CPU_EmulateCycle(gb->cpu);
-        cycles = CPU_GetCycles(gb->cpu);
-        total_cycles += cycles;
-        Timer_Update(gb->timer, cycles);
+        if(!gb->cpu->halt){
+            CPU_EmulateCycle(gb->cpu);
+            cycles = CPU_GetCycles(gb->cpu);
+            total_cycles += cycles;
+            Timer_Update(gb->timer, cycles);
+        }
+        else{
+            cycles = 1;
+            total_cycles++;
+        }
         Graphics_Update(gb->graphics, cycles);
         Interrupt_Handle(gb->cpu);
     }
