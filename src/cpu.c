@@ -39,16 +39,12 @@ void CPU_Fetch(CPU *c){
 }
 
 void CPU_DecodeExecute(CPU *c){
-    if(!c->halt && !c->stop){
-        Decode_Execute(c);
-    }
+    Decode_Execute(c);
 }
 
 void CPU_EmulateCycle(CPU *c){
-    if(!c->halt && !c->stop){
-        c->ir = Mem_ReadByte(c->memory, c->pc);
-        Decode_Execute(c);
-    }
+    c->ir = Mem_ReadByte(c->memory, c->pc);
+    Decode_Execute(c);
 }
 
 unsigned int CPU_GetCycles(CPU *c){
