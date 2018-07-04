@@ -5,9 +5,12 @@
 static void ServiceInterrupt(CPU *c, WORD service_routine);
 
 void Interrupt_Handle(CPU *c){
+    BYTE requests = Mem_ReadByte(c->memory, IF_ADDR);
+    BYTE enable   = Mem_ReadByte(c->memory, IE_ADDR);
+    if(c->halt && (requests & enable) != 0){
+        c->halt = false;
+    }
     if(c->IME){
-        BYTE requests = Mem_ReadByte(c->memory, IF_ADDR);
-        BYTE enable   = Mem_ReadByte(c->memory, IE_ADDR);
         if(requests != 0 && enable != 0){
             // If there's an interrupt to handle, handle it and disable further interrupts
             if(TEST_FLAG(requests, IF_VBLANK) && TEST_FLAG(enable, IF_VBLANK)){
