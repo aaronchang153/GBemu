@@ -28,7 +28,8 @@ struct cpu{
     REGISTER bc;
     REGISTER de;
     REGISTER hl;
-    bool halted;
+    bool halt;
+    bool stop;
     bool IME; // Interrupt Master Enable flag
     unsigned int cycles;
 
