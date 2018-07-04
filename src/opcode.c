@@ -35,7 +35,9 @@ void STOP(CPU *c){
 }
 
 void HALT(CPU *c){
-    printf("HALT: Unimplemented\n");
+    c->halt = true;
+    c->pc++;
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void DI(CPU *c){
