@@ -119,6 +119,7 @@ void Start_Debugger(GAMEBOY *gb){
     bool cont = false;
     unsigned int total_cycles = 0;
     unsigned int cycles;
+    unsigned int instructions_executed = 0;
     SDL_Event event;
     bool running = true;
     while(running){
@@ -145,17 +146,25 @@ void Start_Debugger(GAMEBOY *gb){
 
             if(gb->cpu->pc == bp)
                 cont = false;
-            if(!cont){
+            if(!cont || counter == 1){
+                cont = false;
                 Print_State(gb->cpu);
                 Get_Command(gb, &counter, &bp, &cont, &running);
                 if(!running)
                     break;
             }
-            //counter = (counter <= 0) ? counter : counter - 1;
+            counter = (counter <= 0) ? counter : counter - 1;
 
-            CPU_DecodeExecute(gb->cpu);
-            cycles = CPU_GetCycles(gb->cpu);
-            total_cycles += cycles;
+            if(!gb->cpu->halt){
+                CPU_DecodeExecute(gb->cpu);
+                cycles = CPU_GetCycles(gb->cpu);
+                total_cycles += cycles;
+                instructions_executed++;
+            }
+            else{
+                cycles = 1;
+                total_cycles++;
+            }
             Timer_Update(gb->timer, cycles);
             Graphics_Update(gb->graphics, cycles);
             Interrupt_Handle(gb->cpu);
@@ -183,6 +192,12 @@ static void Get_Command(GAMEBOY *gb, int *counter, int *bp, bool *cont, bool *ru
         tok = strtok(input, " ");
         tok = strtok(NULL, " ");
         *bp = Parse_Hex(tok);
+        *cont = true;
+    }
+    else if(input[0] == 'e'){
+        tok = strtok(input, " ");
+        tok = strtok(NULL, " ");
+        *counter = Parse_Hex(tok);
         *cont = true;
     }
     else if(input[0] == 'C'){
