@@ -8,7 +8,7 @@
 #include <string.h>
 
 static const int CYCLES_PER_UPDATE = CLK_F / UPDATES_PER_SEC;
-static void Get_Command(GAMEBOY *gb, int *counter, int *bp, bool *cont, bool *running);
+static void Get_Command(GAMEBOY *gb, int *counter, int *bp, bool *cont, bool *running, bool *restart);
 
 static int power(int x, int n){
     if(n == 0)
@@ -117,6 +117,7 @@ void Start_Debugger(GAMEBOY *gb){
     int bp;
     int counter = 0;
     bool cont = false;
+    bool restart = false;
     unsigned int total_cycles = 0;
     unsigned int cycles;
     unsigned int instructions_executed = 0;
@@ -149,7 +150,11 @@ void Start_Debugger(GAMEBOY *gb){
             if(!cont || counter == 1){
                 cont = false;
                 Print_State(gb->cpu);
-                Get_Command(gb, &counter, &bp, &cont, &running);
+                Get_Command(gb, &counter, &bp, &cont, &running, &restart);
+                if(restart){
+                    restart = false;
+                    continue;
+                }
                 if(!running)
                     break;
             }
@@ -178,7 +183,7 @@ void Start_Debugger(GAMEBOY *gb){
     Dump_Memory(gb->cpu);
 }
 
-static void Get_Command(GAMEBOY *gb, int *counter, int *bp, bool *cont, bool *running){
+static void Get_Command(GAMEBOY *gb, int *counter, int *bp, bool *cont, bool *running, bool *restart){
     char input[16];
     char *tok;
     fgets(input, 16, stdin);
@@ -203,6 +208,10 @@ static void Get_Command(GAMEBOY *gb, int *counter, int *bp, bool *cont, bool *ru
     else if(input[0] == 'C'){
         *bp = -1;
         *cont = true;
+    }
+    else if(input[0] == 'R'){
+        *restart = true;
+        GB_Startup(gb);
     }
 }
 
