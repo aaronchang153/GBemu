@@ -143,42 +143,48 @@ void Start_Debugger(GAMEBOY *gb){
         }
         total_cycles = 0;
         while(total_cycles < CYCLES_PER_UPDATE){
-            CPU_Fetch(gb->cpu);
+            if(!gb->cpu->stop){
+                CPU_Fetch(gb->cpu);
 
-            if(gb->cpu->pc == bp)
-                cont = false;
-            if(!cont || counter == 1){
-                cont = false;
-                Print_State(gb->cpu);
-                Get_Command(gb, &counter, &bp, &cont, &running, &restart);
-                if(restart){
-                    restart = false;
-                    continue;
+                if(gb->cpu->pc == bp)
+                    cont = false;
+                if(!cont || counter == 1){
+                    cont = false;
+                    Print_State(gb->cpu);
+                    Get_Command(gb, &counter, &bp, &cont, &running, &restart);
+                    if(restart){
+                        restart = false;
+                        continue;
+                    }
+                    if(!running)
+                        break;
                 }
-                if(!running)
-                    break;
-            }
-            counter = (counter <= 0) ? counter : counter - 1;
+                counter = (counter <= 0) ? counter : counter - 1;
 
-            if(!gb->cpu->halt){
-                CPU_DecodeExecute(gb->cpu);
-                cycles = CPU_GetCycles(gb->cpu);
-                total_cycles += cycles;
-                instructions_executed++;
+                if(!gb->cpu->halt){
+                    CPU_DecodeExecute(gb->cpu);
+                    cycles = CPU_GetCycles(gb->cpu);
+                    total_cycles += cycles;
+                    instructions_executed++;
+                }
+                else{
+                    cycles = 4;
+                    total_cycles += 4;
+                } // endif halt
+                Timer_Update(gb->timer, cycles);
+                Graphics_Update(gb->graphics, cycles);
             }
             else{
-                cycles = 1;
-                total_cycles++;
-            }
-            Timer_Update(gb->timer, cycles);
-            Graphics_Update(gb->graphics, cycles);
+                cycles = 4;
+                total_cycles += 4;
+            } // endif stop
             Interrupt_Handle(gb->cpu);
         }
         Graphics_RenderScreen(gb->graphics);
         if(total_cycles < CYCLES_PER_UPDATE){
             break;
         }
-        SDL_Delay(30);
+        //SDL_Delay(30);
     }
     Dump_Memory(gb->cpu);
 }

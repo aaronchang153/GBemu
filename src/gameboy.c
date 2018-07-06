@@ -61,18 +61,23 @@ void GB_Update(GAMEBOY *gb){
     unsigned int cycles;
 
     while(total_cycles < CYCLES_PER_UPDATE){
-        if(!gb->cpu->halt){
-            CPU_EmulateCycle(gb->cpu);
-            cycles = CPU_GetCycles(gb->cpu);
-            total_cycles += cycles;
+        if(!gb->cpu->stop){
+            if(!gb->cpu->halt){
+                CPU_EmulateCycle(gb->cpu);
+                cycles = CPU_GetCycles(gb->cpu);
+                total_cycles += cycles;
+            }
+            else{
+                cycles = 4;
+                total_cycles += 4;
+            } // endif halt
+            Timer_Update(gb->timer, cycles);
+            Graphics_Update(gb->graphics, cycles);
         }
         else{
-            // Just use 4 since NOP takes 4 cycles
             cycles = 4;
             total_cycles += 4;
-        }
-        Timer_Update(gb->timer, cycles);
-        Graphics_Update(gb->graphics, cycles);
+        } // endif stop
         Interrupt_Handle(gb->cpu);
     }
     Graphics_RenderScreen(gb->graphics);
