@@ -29,9 +29,12 @@ void NOP(CPU *c){
 }
 
 void STOP(CPU *c){
-    printf("STOP: Unimplemented\n");
-    // prereq: - all interrupt-enable flags (IE) are reset
-    //         - input to P10-P13 is low for all
+    /*
+    if(Mem_ReadByte(c->memory, IE_ADDR) == 0x00 && (Mem_ReadByte(c->memory, P1_ADDR) & 0x0F) == 0x00)
+        c->stop = true;
+    */
+    c->pc += 2;
+    CPU_SetCycles(c, CYCLES(1));
 }
 
 void HALT(CPU *c){
@@ -311,23 +314,23 @@ void LD_HLtoSP(CPU *c){
 
 void LD_SPtoHL(CPU *c){
     // e MAY NEED TO BE SIGNED + SIGN EXTENDED
-    BYTE e = IMM8(c);
+    SIGNED_BYTE e = (SIGNED_BYTE) IMM8(c);
     CPU_ClearFlag(c, Z_FLAG | N_FLAG);
-    if(((c->sp & 0x0FFF) + (WORD) e) == 0x1000){
+    if(((c->sp & 0x0FFF) + (((SIGNED_WORD) e) & 0x0FFF)) == 0x1000){
         // Set H if there's a carry from bit 11
         CPU_SetFlag(c, H_FLAG, true);
     }
     else{
         CPU_ClearFlag(c, H_FLAG);
     }
-    if((((unsigned int) c->sp) + (unsigned int) e) == 0x10000){
+    if((((int) c->sp) + (((int) e) & 0xFFFF)) == 0x10000){
         // Set C if there's a carry from bit 15
         CPU_SetFlag(c, C_FLAG, true);
     }
     else{
         CPU_ClearFlag(c, C_FLAG);
     }
-    c->hl.reg = c->sp + (SIGNED_BYTE) e;
+    c->hl.reg = c->sp + e;
     c->pc += 2;
     CPU_SetCycles(c, CYCLES(3));
 }
@@ -679,11 +682,11 @@ void ADD_HL(CPU *c, WORD *reg){
 
 void ADD_SP(CPU *c){
     // DATA MAY NEED TO BE SIGNED AND SIGN EXTENDED
-    BYTE data = IMM8(c);
+    SIGNED_BYTE data = (SIGNED_BYTE) IMM8(c);
     CPU_ClearFlag(c, N_FLAG | Z_FLAG);
     CPU_SetFlag(c, H_FLAG, HALF_CARRY_ADD16(c->sp, (WORD) data));
     CPU_SetFlag(c, C_FLAG, CARRY_ADD16(c->sp, (WORD) data));
-    c->sp += (SIGNED_WORD) data;
+    c->sp += data;
     c->pc += 2;
     CPU_SetCycles(c, CYCLES(4));
 }
