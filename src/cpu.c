@@ -1,5 +1,4 @@
 #include "cpu.h"
-#include "decode.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -181,20 +180,20 @@ static inline void and_a(CPU *c, BYTE data){
 }
 
 static inline void or_a(CPU *c, BYTE data){
-    CPU_ClearFlag(c, N_FLAG | Z_FLAG | C_FLAG);
+    CPU_ClearFlag(c, N_FLAG | H_FLAG | C_FLAG);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi |= data) == 0);
 }
 
 static inline void xor_a(CPU *c, BYTE data){
-    CPU_ClearFlag(c, N_FLAG | Z_FLAG | C_FLAG);
+    CPU_ClearFlag(c, N_FLAG | H_FLAG | C_FLAG);
     CPU_SetFlag(c, Z_FLAG, (c->af.hi ^= data) == 0);
 }
 
 static inline void cp_a(CPU *c, BYTE data){
     CPU_SetFlag(c, N_FLAG, true);
-    CPU_SetFlag(c, H_FLAG, c->af.hi < data);
+    CPU_SetFlag(c, H_FLAG, c->af.hi > data);
     CPU_SetFlag(c, Z_FLAG, c->af.hi == data);
-    CPU_SetFlag(c, C_FLAG, c->af.hi > data);
+    CPU_SetFlag(c, C_FLAG, c->af.hi < data);
 }
 
 static inline void inc_r8(CPU *c, BYTE *r){
@@ -228,16 +227,6 @@ static inline void inc_r16(CPU *c, WORD *r){
 static inline void dec_r16(CPU *c, WORD *r){
     (*r)--;
     // This one too
-    c->cycles += CYCLES(1);
-}
-
-// Misc.
-static inline void swap(CPU *c, BYTE *r){
-    CPU_ClearFlag(c, N_FLAG | H_FLAG | C_FLAG);
-    BYTE temp = ((*r) & 0xF0) >> 4;
-    (*r) = ((*r) << 4) | temp;
-    CPU_SetFlag(c, Z_FLAG, (*r) == 0);
-    // Takes an extra machine cycle
     c->cycles += CYCLES(1);
 }
 
@@ -286,8 +275,8 @@ static inline void rl(CPU *c, BYTE *r){
 static inline void rrc(CPU *c, BYTE *r){
     BYTE rotate;
     CPU_ClearFlag(c, H_FLAG | N_FLAG);
-    CPU_SetFlag(c, C_FLAG, (rotate = (*r) & 0x01) == 1);
-    CPU_SetFlag(c, Z_FLAG, (*r = ((*r) >> 1) | (rotate << 7)) == 0);
+    CPU_SetFlag(c, C_FLAG, (rotate = (*r) & 0x80) != 0);
+    CPU_SetFlag(c, Z_FLAG, (*r = ((*r) >> 1) | rotate) == 0);
 }
 
 static inline void rr(CPU *c, BYTE *r){
@@ -316,12 +305,17 @@ static inline void srl(CPU *c, BYTE *r){
     CPU_SetFlag(c, Z_FLAG, ((*r) >>= 1) == 0);
 }
 
+static inline void swap(CPU *c, BYTE *r){
+    CPU_ClearFlag(c, N_FLAG | H_FLAG | C_FLAG);
+    (*r) = ((*r) << 4) | ((*r) >> 4);
+    CPU_SetFlag(c, Z_FLAG, (*r) == 0);
+}
+
 // CB Prefixed Bit Operations
 static inline void bit(CPU *c, BYTE *r, int b){
     CPU_ClearFlag(c, N_FLAG);
     CPU_SetFlag(c, H_FLAG, true);
     CPU_SetFlag(c, Z_FLAG, !TEST_BIT(*r, b));
-    c->cycles += CYCLES(1);
 }
 
 static inline void set(CPU *c, BYTE *r, int b){
@@ -364,8 +358,10 @@ void CPU_EmulateCycle(CPU *c){
             CPU_SetFlag(c, C_FLAG, (temp8 = c->af.hi >> 7) == 1);
             c->af.hi = (c->af.hi << 1) | temp8;
             break;
-        case 0x08:
-            WRITE(c, imm16(c), c->sp);
+        case 0x08: // LD (nn),SP
+            temp16 = imm16(c);
+            WRITE(c, temp16, lo(c->sp));
+            WRITE(c, temp16 + 1, hi(c->sp));
             break;
         case 0x09:
             add_hl_r16(c, c->bc.reg);
@@ -417,7 +413,7 @@ void CPU_EmulateCycle(CPU *c){
         case 0x17: // RLA
             temp8 = (CPU_CheckFlag(c, C_FLAG)) ? 0x01 : 0x00;
             CPU_ClearFlag(c, H_FLAG | N_FLAG | Z_FLAG);
-            CPU_SetFlag(c, C_FLAG, (c->af.hi >> 7) == 1);
+            CPU_SetFlag(c, C_FLAG, (c->af.hi & 0x80) != 0);
             c->af.hi = (c->af.hi << 1) | temp8;
             break;
         case 0x18:
@@ -439,12 +435,12 @@ void CPU_EmulateCycle(CPU *c){
             dec_r8(c, &c->de.lo);
             break;
         case 0x1E:
-            c->de.lo = READ(c, FETCH(c));
+            c->de.lo = FETCH(c);
             break;
         case 0x1F: // RRA
             temp8 = (CPU_CheckFlag(c, C_FLAG)) ? 0x80 : 0x00;
             CPU_ClearFlag(c, H_FLAG | N_FLAG | Z_FLAG);
-            CPU_SetFlag(c, C_FLAG, (c->af.hi & 0x01) == 1);
+            CPU_SetFlag(c, C_FLAG, (c->af.hi & 0x01) != 0);
             c->af.hi = (c->af.hi >> 1) | temp8;
             break;
 
@@ -530,7 +526,7 @@ void CPU_EmulateCycle(CPU *c){
             c->sp = imm16(c);
             break;
         case 0x32: // LDD (HL),A
-            c->af.hi = READ(c, c->hl.reg--);
+            WRITE(c, c->hl.reg--, c->af.hi);
             break;
         case 0x33:
             inc_r16(c, &c->sp);
@@ -582,7 +578,7 @@ void CPU_EmulateCycle(CPU *c){
             break;
         case 0x3F: // CCF
             CPU_ClearFlag(c, H_FLAG | N_FLAG);
-            CPU_SetFlag(c, C_FLAG, !CPU_CheckFlag(c, C_FLAG));
+            c->af.lo ^= C_FLAG;
             break;
 
         case 0x40: c->bc.hi = c->bc.hi; break;
@@ -861,7 +857,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x43: bit(c, &c->de.lo, 0); break;
                 case 0x44: bit(c, &c->hl.hi, 0); break;
                 case 0x45: bit(c, &c->hl.lo, 0); break;
-                case 0x46: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 0); WRITE(c, c->hl.reg, temp8); break;
+                case 0x46: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 0); break;
                 case 0x47: bit(c, &c->af.hi, 0); break;
                 case 0x48: bit(c, &c->bc.hi, 1); break;
                 case 0x49: bit(c, &c->bc.lo, 1); break;
@@ -869,7 +865,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x4B: bit(c, &c->de.lo, 1); break;
                 case 0x4C: bit(c, &c->hl.hi, 1); break;
                 case 0x4D: bit(c, &c->hl.lo, 1); break;
-                case 0x4E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 1); WRITE(c, c->hl.reg, temp8); break;
+                case 0x4E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 1); break;
                 case 0x4F: bit(c, &c->af.hi, 1); break;
 
                 case 0x50: bit(c, &c->bc.hi, 2); break;
@@ -878,7 +874,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x53: bit(c, &c->de.lo, 2); break;
                 case 0x54: bit(c, &c->hl.hi, 2); break;
                 case 0x55: bit(c, &c->hl.lo, 2); break;
-                case 0x56: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 2); WRITE(c, c->hl.reg, temp8); break;
+                case 0x56: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 2); break;
                 case 0x57: bit(c, &c->af.hi, 2); break;
                 case 0x58: bit(c, &c->bc.hi, 3); break;
                 case 0x59: bit(c, &c->bc.lo, 3); break;
@@ -886,7 +882,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x5B: bit(c, &c->de.lo, 3); break;
                 case 0x5C: bit(c, &c->hl.hi, 3); break;
                 case 0x5D: bit(c, &c->hl.lo, 3); break;
-                case 0x5E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 3); WRITE(c, c->hl.reg, temp8); break;
+                case 0x5E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 3); break;
                 case 0x5F: bit(c, &c->af.hi, 3); break;
 
                 case 0x60: bit(c, &c->bc.hi, 4); break;
@@ -895,7 +891,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x63: bit(c, &c->de.lo, 4); break;
                 case 0x64: bit(c, &c->hl.hi, 4); break;
                 case 0x65: bit(c, &c->hl.lo, 4); break;
-                case 0x66: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 4); WRITE(c, c->hl.reg, temp8); break;
+                case 0x66: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 4); break;
                 case 0x67: bit(c, &c->af.hi, 4); break;
                 case 0x68: bit(c, &c->bc.hi, 5); break;
                 case 0x69: bit(c, &c->bc.lo, 5); break;
@@ -903,7 +899,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x6B: bit(c, &c->de.lo, 5); break;
                 case 0x6C: bit(c, &c->hl.hi, 5); break;
                 case 0x6D: bit(c, &c->hl.lo, 5); break;
-                case 0x6E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 5); WRITE(c, c->hl.reg, temp8); break;
+                case 0x6E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 5); break;
                 case 0x6F: bit(c, &c->af.hi, 5); break;
 
                 case 0x70: bit(c, &c->bc.hi, 6); break;
@@ -912,7 +908,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x73: bit(c, &c->de.lo, 6); break;
                 case 0x74: bit(c, &c->hl.hi, 6); break;
                 case 0x75: bit(c, &c->hl.lo, 6); break;
-                case 0x76: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 6); WRITE(c, c->hl.reg, temp8); break;
+                case 0x76: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 6); break;
                 case 0x77: bit(c, &c->af.hi, 6); break;
                 case 0x78: bit(c, &c->bc.hi, 7); break;
                 case 0x79: bit(c, &c->bc.lo, 7); break;
@@ -920,7 +916,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x7B: bit(c, &c->de.lo, 7); break;
                 case 0x7C: bit(c, &c->hl.hi, 7); break;
                 case 0x7D: bit(c, &c->hl.lo, 7); break;
-                case 0x7E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 7); WRITE(c, c->hl.reg, temp8); break;
+                case 0x7E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 7); break;
                 case 0x7F: bit(c, &c->af.hi, 7); break;
 
                 case 0x80: res(c, &c->bc.hi, 0); break;
@@ -1098,7 +1094,7 @@ void CPU_EmulateCycle(CPU *c){
             break;
         case 0xD3: // Unused
             break;
-        case 0xD4: // CALL NZ,nn
+        case 0xD4: // CALL NC,nn
             if(!CPU_CheckFlag(c, C_FLAG)){
                 call_nn(c);
             }
