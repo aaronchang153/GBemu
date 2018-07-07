@@ -41,7 +41,8 @@ void CPU_Fetch(CPU *c){
 }
 
 void CPU_DecodeExecute(CPU *c){
-    Decode_Execute(c);
+    //Decode_Execute(c);
+    CPU_EmulateCycle(c);
 }
 
 /* Implementation moved to the bottom
@@ -160,8 +161,8 @@ static inline void sub_a(CPU *c, BYTE data){
 static inline void sbc_a(CPU *c, BYTE data){
     bool cy = CPU_CheckFlag(c, C_FLAG);
     CPU_SetFlag(c, N_FLAG, true);
-    CPU_SetFlag(c, H_FLAG, HALF_CARRY_SUB(c->af.hi, data));
-    CPU_SetFlag(c, C_FLAG, CARRY_SUB(c->af.hi, data));
+    CPU_SetFlag(c, H_FLAG, hf_sub(c->af.hi, data));
+    CPU_SetFlag(c, C_FLAG, cf_sub(c->af.hi, data));
     c->af.hi -= data;
     if(cy){
         if(hf_sub(c->af.hi, 1))
@@ -231,7 +232,7 @@ static inline void dec_r16(CPU *c, WORD *r){
 }
 
 // Misc.
-static inline void swap_r8(CPU *c, BYTE *r){
+static inline void swap(CPU *c, BYTE *r){
     CPU_ClearFlag(c, N_FLAG | H_FLAG | C_FLAG);
     BYTE temp = ((*r) & 0xF0) >> 4;
     (*r) = ((*r) << 4) | temp;
@@ -267,8 +268,74 @@ static inline void ret(CPU *c){
     c->sp += 2;
 }
 
+// CB Prefixed Rotates and Shifts
+static inline void rlc(CPU *c, BYTE *r){
+    BYTE rotate;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (rotate = (*r) >> 7) == 1);
+    CPU_SetFlag(c, Z_FLAG, (*r = ((*r) << 1) | rotate) == 0);
+}
+
+static inline void rl(CPU *c, BYTE *r){
+    BYTE rotate = (CPU_CheckFlag(c, C_FLAG)) ? 0x01 : 0x00;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, ((*r) >> 7) == 1);
+    CPU_SetFlag(c, Z_FLAG, (*r = ((*r) << 1) | rotate) == 0);
+}
+
+static inline void rrc(CPU *c, BYTE *r){
+    BYTE rotate;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, (rotate = (*r) & 0x01) == 1);
+    CPU_SetFlag(c, Z_FLAG, (*r = ((*r) >> 1) | (rotate << 7)) == 0);
+}
+
+static inline void rr(CPU *c, BYTE *r){
+    BYTE rotate = (CPU_CheckFlag(c, C_FLAG)) ? 0x80 : 0x00;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, ((*r) & 0x01) == 1);
+    CPU_SetFlag(c, Z_FLAG, (*r = ((*r) >> 1) | rotate) == 0);
+}
+
+static inline void sla(CPU *c, BYTE *r){
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, ((*r) & 0x80) == 0x80);
+    CPU_SetFlag(c, Z_FLAG, ((*r) <<= 1) == 0);
+}
+
+static inline void sra(CPU *c, BYTE *r){
+    BYTE extend = (*r) & 0x80;
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, ((*r) & 0x01) == 0x01);
+    CPU_SetFlag(c, Z_FLAG, (*r = ((*r) >> 1) | extend) == 0);
+}
+
+static inline void srl(CPU *c, BYTE *r){
+    CPU_ClearFlag(c, H_FLAG | N_FLAG);
+    CPU_SetFlag(c, C_FLAG, ((*r) & 0x01) == 1);
+    CPU_SetFlag(c, Z_FLAG, ((*r) >>= 1) == 0);
+}
+
+// CB Prefixed Bit Operations
+static inline void bit(CPU *c, BYTE *r, int b){
+    CPU_ClearFlag(c, N_FLAG);
+    CPU_SetFlag(c, H_FLAG, true);
+    CPU_SetFlag(c, Z_FLAG, !TEST_BIT(*r, b));
+    c->cycles += CYCLES(1);
+}
+
+static inline void set(CPU *c, BYTE *r, int b){
+    (*r) |= (0x01 << b);
+}
+
+static inline void res(CPU *c, BYTE *r, int b){
+    (*r) &= ~(0x01 << b);
+}
+
+
 void CPU_EmulateCycle(CPU *c){
     BYTE temp8; // temporary variable that's used by some instructions
+    WORD temp16;
     c->cycles = 0;
     c->ir = FETCH(c);
     switch(c->ir){
@@ -281,7 +348,7 @@ void CPU_EmulateCycle(CPU *c){
             WRITE(c, c->bc.reg, c->af.hi);
             break;
         case 0x03:
-            inc_r16(c, &c->bc);
+            inc_r16(c, &c->bc.reg);
             break;
         case 0x04:
             inc_r8(c, &c->bc.hi);
@@ -649,13 +716,9 @@ void CPU_EmulateCycle(CPU *c){
         case 0xBF: cp_a(c, c->af.hi); break;
 
         case 0xC0: // RET NZ
-            if(!CPU_CheckFlag(c, Z_FLAG)){
+            if(!CPU_CheckFlag(c, Z_FLAG))
                 ret(c);
-                c->cycles += CYCLES(1);
-            }
-            else{
-                PC_WRITE(c, c->pc + 1);
-            }
+            c->cycles += CYCLES(1);
             break;
         case 0xC1:
             pop(c, &c->bc);
@@ -708,7 +771,280 @@ void CPU_EmulateCycle(CPU *c){
             }
             break;
         case 0xCB: // CB Prefix
-            /***** To be implemented *****/
+            c->ir = FETCH(c);
+            switch(c->ir){
+                case 0x00: rlc(c, &c->bc.hi); break;
+                case 0x01: rlc(c, &c->bc.lo); break;
+                case 0x02: rlc(c, &c->de.hi); break;
+                case 0x03: rlc(c, &c->de.lo); break;
+                case 0x04: rlc(c, &c->hl.hi); break;
+                case 0x05: rlc(c, &c->hl.lo); break;
+                case 0x06: temp8 = READ(c, c->hl.reg); rlc(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
+                case 0x07: rrc(c, &c->af.hi); break;
+                case 0x08: rrc(c, &c->bc.hi); break;
+                case 0x09: rrc(c, &c->bc.lo); break;
+                case 0x0A: rrc(c, &c->de.hi); break;
+                case 0x0B: rrc(c, &c->de.lo); break;
+                case 0x0C: rrc(c, &c->hl.hi); break;
+                case 0x0D: rrc(c, &c->hl.lo); break;
+                case 0x0E: temp8 = READ(c, c->hl.reg); rrc(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
+                case 0x0F: rrc(c, &c->af.hi); break;
+
+                case 0x10: rl(c, &c->bc.hi); break;
+                case 0x11: rl(c, &c->bc.lo); break;
+                case 0x12: rl(c, &c->de.hi); break;
+                case 0x13: rl(c, &c->de.lo); break;
+                case 0x14: rl(c, &c->hl.hi); break;
+                case 0x15: rl(c, &c->hl.lo); break;
+                case 0x16: temp8 = READ(c, c->hl.reg); rl(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
+                case 0x17: rl(c, &c->af.hi); break;
+                case 0x18: rr(c, &c->bc.hi); break;
+                case 0x19: rr(c, &c->bc.lo); break;
+                case 0x1A: rr(c, &c->de.hi); break;
+                case 0x1B: rr(c, &c->de.lo); break;
+                case 0x1C: rr(c, &c->hl.hi); break;
+                case 0x1D: rr(c, &c->hl.lo); break;
+                case 0x1E: temp8 = READ(c, c->hl.reg); rr(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
+                case 0x1F: rr(c, &c->af.hi); break;
+
+                case 0x20: sla(c, &c->bc.hi); break;
+                case 0x21: sla(c, &c->bc.lo); break;
+                case 0x22: sla(c, &c->de.hi); break;
+                case 0x23: sla(c, &c->de.lo); break;
+                case 0x24: sla(c, &c->hl.hi); break;
+                case 0x25: sla(c, &c->hl.lo); break;
+                case 0x26: temp8 = READ(c, c->hl.reg); sla(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
+                case 0x27: sla(c, &c->af.hi); break;
+                case 0x28: sra(c, &c->bc.hi); break;
+                case 0x29: sra(c, &c->bc.lo); break;
+                case 0x2A: sra(c, &c->de.hi); break;
+                case 0x2B: sra(c, &c->de.lo); break;
+                case 0x2C: sra(c, &c->hl.hi); break;
+                case 0x2D: sra(c, &c->hl.lo); break;
+                case 0x2E: temp8 = READ(c, c->hl.reg); sra(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
+                case 0x2F: sra(c, &c->af.hi); break;
+
+                case 0x30: swap(c, &c->bc.hi); break;
+                case 0x31: swap(c, &c->bc.lo); break;
+                case 0x32: swap(c, &c->de.hi); break;
+                case 0x33: swap(c, &c->de.lo); break;
+                case 0x34: swap(c, &c->hl.hi); break;
+                case 0x35: swap(c, &c->hl.lo); break;
+                case 0x36: temp8 = READ(c, c->hl.reg); swap(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
+                case 0x37: swap(c, &c->af.hi); break;
+                case 0x38: srl(c, &c->bc.hi); break;
+                case 0x39: srl(c, &c->bc.lo); break;
+                case 0x3A: srl(c, &c->de.hi); break;
+                case 0x3B: srl(c, &c->de.lo); break;
+                case 0x3C: srl(c, &c->hl.hi); break;
+                case 0x3D: srl(c, &c->hl.lo); break;
+                case 0x3E: temp8 = READ(c, c->hl.reg); srl(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
+                case 0x3F: srl(c, &c->af.hi); break;
+
+                case 0x40: bit(c, &c->bc.hi, 0); break;
+                case 0x41: bit(c, &c->bc.lo, 0); break;
+                case 0x42: bit(c, &c->de.hi, 0); break;
+                case 0x43: bit(c, &c->de.lo, 0); break;
+                case 0x44: bit(c, &c->hl.hi, 0); break;
+                case 0x45: bit(c, &c->hl.lo, 0); break;
+                case 0x46: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 0); WRITE(c, c->hl.reg, temp8); break;
+                case 0x47: bit(c, &c->af.hi, 0); break;
+                case 0x48: bit(c, &c->bc.hi, 1); break;
+                case 0x49: bit(c, &c->bc.lo, 1); break;
+                case 0x4A: bit(c, &c->de.hi, 1); break;
+                case 0x4B: bit(c, &c->de.lo, 1); break;
+                case 0x4C: bit(c, &c->hl.hi, 1); break;
+                case 0x4D: bit(c, &c->hl.lo, 1); break;
+                case 0x4E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 1); WRITE(c, c->hl.reg, temp8); break;
+                case 0x4F: bit(c, &c->af.hi, 1); break;
+
+                case 0x50: bit(c, &c->bc.hi, 2); break;
+                case 0x51: bit(c, &c->bc.lo, 2); break;
+                case 0x52: bit(c, &c->de.hi, 2); break;
+                case 0x53: bit(c, &c->de.lo, 2); break;
+                case 0x54: bit(c, &c->hl.hi, 2); break;
+                case 0x55: bit(c, &c->hl.lo, 2); break;
+                case 0x56: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 2); WRITE(c, c->hl.reg, temp8); break;
+                case 0x57: bit(c, &c->af.hi, 2); break;
+                case 0x58: bit(c, &c->bc.hi, 3); break;
+                case 0x59: bit(c, &c->bc.lo, 3); break;
+                case 0x5A: bit(c, &c->de.hi, 3); break;
+                case 0x5B: bit(c, &c->de.lo, 3); break;
+                case 0x5C: bit(c, &c->hl.hi, 3); break;
+                case 0x5D: bit(c, &c->hl.lo, 3); break;
+                case 0x5E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 3); WRITE(c, c->hl.reg, temp8); break;
+                case 0x5F: bit(c, &c->af.hi, 3); break;
+
+                case 0x60: bit(c, &c->bc.hi, 4); break;
+                case 0x61: bit(c, &c->bc.lo, 4); break;
+                case 0x62: bit(c, &c->de.hi, 4); break;
+                case 0x63: bit(c, &c->de.lo, 4); break;
+                case 0x64: bit(c, &c->hl.hi, 4); break;
+                case 0x65: bit(c, &c->hl.lo, 4); break;
+                case 0x66: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 4); WRITE(c, c->hl.reg, temp8); break;
+                case 0x67: bit(c, &c->af.hi, 4); break;
+                case 0x68: bit(c, &c->bc.hi, 5); break;
+                case 0x69: bit(c, &c->bc.lo, 5); break;
+                case 0x6A: bit(c, &c->de.hi, 5); break;
+                case 0x6B: bit(c, &c->de.lo, 5); break;
+                case 0x6C: bit(c, &c->hl.hi, 5); break;
+                case 0x6D: bit(c, &c->hl.lo, 5); break;
+                case 0x6E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 5); WRITE(c, c->hl.reg, temp8); break;
+                case 0x6F: bit(c, &c->af.hi, 5); break;
+
+                case 0x70: bit(c, &c->bc.hi, 6); break;
+                case 0x71: bit(c, &c->bc.lo, 6); break;
+                case 0x72: bit(c, &c->de.hi, 6); break;
+                case 0x73: bit(c, &c->de.lo, 6); break;
+                case 0x74: bit(c, &c->hl.hi, 6); break;
+                case 0x75: bit(c, &c->hl.lo, 6); break;
+                case 0x76: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 6); WRITE(c, c->hl.reg, temp8); break;
+                case 0x77: bit(c, &c->af.hi, 6); break;
+                case 0x78: bit(c, &c->bc.hi, 7); break;
+                case 0x79: bit(c, &c->bc.lo, 7); break;
+                case 0x7A: bit(c, &c->de.hi, 7); break;
+                case 0x7B: bit(c, &c->de.lo, 7); break;
+                case 0x7C: bit(c, &c->hl.hi, 7); break;
+                case 0x7D: bit(c, &c->hl.lo, 7); break;
+                case 0x7E: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 7); WRITE(c, c->hl.reg, temp8); break;
+                case 0x7F: bit(c, &c->af.hi, 7); break;
+
+                case 0x80: res(c, &c->bc.hi, 0); break;
+                case 0x81: res(c, &c->bc.lo, 0); break;
+                case 0x82: res(c, &c->de.hi, 0); break;
+                case 0x83: res(c, &c->de.lo, 0); break;
+                case 0x84: res(c, &c->hl.hi, 0); break;
+                case 0x85: res(c, &c->hl.lo, 0); break;
+                case 0x86: temp8 = READ(c, c->hl.reg); res(c, &temp8, 0); WRITE(c, c->hl.reg, temp8); break;
+                case 0x87: res(c, &c->af.hi, 0); break;
+                case 0x88: res(c, &c->bc.hi, 1); break;
+                case 0x89: res(c, &c->bc.lo, 1); break;
+                case 0x8A: res(c, &c->de.hi, 1); break;
+                case 0x8B: res(c, &c->de.lo, 1); break;
+                case 0x8C: res(c, &c->hl.hi, 1); break;
+                case 0x8D: res(c, &c->hl.lo, 1); break;
+                case 0x8E: temp8 = READ(c, c->hl.reg); res(c, &temp8, 1); WRITE(c, c->hl.reg, temp8); break;
+                case 0x8F: res(c, &c->af.hi, 1); break;
+
+                case 0x90: res(c, &c->bc.hi, 2); break;
+                case 0x91: res(c, &c->bc.lo, 2); break;
+                case 0x92: res(c, &c->de.hi, 2); break;
+                case 0x93: res(c, &c->de.lo, 2); break;
+                case 0x94: res(c, &c->hl.hi, 2); break;
+                case 0x95: res(c, &c->hl.lo, 2); break;
+                case 0x96: temp8 = READ(c, c->hl.reg); res(c, &temp8, 2); WRITE(c, c->hl.reg, temp8); break;
+                case 0x97: res(c, &c->af.hi, 2); break;
+                case 0x98: res(c, &c->bc.hi, 3); break;
+                case 0x99: res(c, &c->bc.lo, 3); break;
+                case 0x9A: res(c, &c->de.hi, 3); break;
+                case 0x9B: res(c, &c->de.lo, 3); break;
+                case 0x9C: res(c, &c->hl.hi, 3); break;
+                case 0x9D: res(c, &c->hl.lo, 3); break;
+                case 0x9E: temp8 = READ(c, c->hl.reg); res(c, &temp8, 3); WRITE(c, c->hl.reg, temp8); break;
+                case 0x9F: res(c, &c->af.hi, 3); break;
+
+                case 0xA0: res(c, &c->bc.hi, 4); break;
+                case 0xA1: res(c, &c->bc.lo, 4); break;
+                case 0xA2: res(c, &c->de.hi, 4); break;
+                case 0xA3: res(c, &c->de.lo, 4); break;
+                case 0xA4: res(c, &c->hl.hi, 4); break;
+                case 0xA5: res(c, &c->hl.lo, 4); break;
+                case 0xA6: temp8 = READ(c, c->hl.reg); res(c, &temp8, 4); WRITE(c, c->hl.reg, temp8); break;
+                case 0xA7: res(c, &c->af.hi, 4); break;
+                case 0xA8: res(c, &c->bc.hi, 5); break;
+                case 0xA9: res(c, &c->bc.lo, 5); break;
+                case 0xAA: res(c, &c->de.hi, 5); break;
+                case 0xAB: res(c, &c->de.lo, 5); break;
+                case 0xAC: res(c, &c->hl.hi, 5); break;
+                case 0xAD: res(c, &c->hl.lo, 5); break;
+                case 0xAE: temp8 = READ(c, c->hl.reg); res(c, &temp8, 5); WRITE(c, c->hl.reg, temp8); break;
+                case 0xAF: res(c, &c->af.hi, 5); break;
+
+                case 0xB0: res(c, &c->bc.hi, 6); break;
+                case 0xB1: res(c, &c->bc.lo, 6); break;
+                case 0xB2: res(c, &c->de.hi, 6); break;
+                case 0xB3: res(c, &c->de.lo, 6); break;
+                case 0xB4: res(c, &c->hl.hi, 6); break;
+                case 0xB5: res(c, &c->hl.lo, 6); break;
+                case 0xB6: temp8 = READ(c, c->hl.reg); res(c, &temp8, 6); WRITE(c, c->hl.reg, temp8); break;
+                case 0xB7: res(c, &c->af.hi, 6); break;
+                case 0xB8: res(c, &c->bc.hi, 7); break;
+                case 0xB9: res(c, &c->bc.lo, 7); break;
+                case 0xBA: res(c, &c->de.hi, 7); break;
+                case 0xBB: res(c, &c->de.lo, 7); break;
+                case 0xBC: res(c, &c->hl.hi, 7); break;
+                case 0xBD: res(c, &c->hl.lo, 7); break;
+                case 0xBE: temp8 = READ(c, c->hl.reg); res(c, &temp8, 7); WRITE(c, c->hl.reg, temp8); break;
+                case 0xBF: res(c, &c->af.hi, 7); break;
+
+                case 0xC0: set(c, &c->bc.hi, 0); break;
+                case 0xC1: set(c, &c->bc.lo, 0); break;
+                case 0xC2: set(c, &c->de.hi, 0); break;
+                case 0xC3: set(c, &c->de.lo, 0); break;
+                case 0xC4: set(c, &c->hl.hi, 0); break;
+                case 0xC5: set(c, &c->hl.lo, 0); break;
+                case 0xC6: temp8 = READ(c, c->hl.reg); set(c, &temp8, 0); WRITE(c, c->hl.reg, temp8); break;
+                case 0xC7: set(c, &c->af.hi, 0); break;
+                case 0xC8: set(c, &c->bc.hi, 1); break;
+                case 0xC9: set(c, &c->bc.lo, 1); break;
+                case 0xCA: set(c, &c->de.hi, 1); break;
+                case 0xCB: set(c, &c->de.lo, 1); break;
+                case 0xCC: set(c, &c->hl.hi, 1); break;
+                case 0xCD: set(c, &c->hl.lo, 1); break;
+                case 0xCE: temp8 = READ(c, c->hl.reg); set(c, &temp8, 1); WRITE(c, c->hl.reg, temp8); break;
+                case 0xCF: set(c, &c->af.hi, 1); break;
+
+                case 0xD0: set(c, &c->bc.hi, 2); break;
+                case 0xD1: set(c, &c->bc.lo, 2); break;
+                case 0xD2: set(c, &c->de.hi, 2); break;
+                case 0xD3: set(c, &c->de.lo, 2); break;
+                case 0xD4: set(c, &c->hl.hi, 2); break;
+                case 0xD5: set(c, &c->hl.lo, 2); break;
+                case 0xD6: temp8 = READ(c, c->hl.reg); set(c, &temp8, 2); WRITE(c, c->hl.reg, temp8); break;
+                case 0xD7: set(c, &c->af.hi, 2); break;
+                case 0xD8: set(c, &c->bc.hi, 3); break;
+                case 0xD9: set(c, &c->bc.lo, 3); break;
+                case 0xDA: set(c, &c->de.hi, 3); break;
+                case 0xDB: set(c, &c->de.lo, 3); break;
+                case 0xDC: set(c, &c->hl.hi, 3); break;
+                case 0xDD: set(c, &c->hl.lo, 3); break;
+                case 0xDE: temp8 = READ(c, c->hl.reg); set(c, &temp8, 3); WRITE(c, c->hl.reg, temp8); break;
+                case 0xDF: set(c, &c->af.hi, 3); break;
+
+                case 0xE0: set(c, &c->bc.hi, 4); break;
+                case 0xE1: set(c, &c->bc.lo, 4); break;
+                case 0xE2: set(c, &c->de.hi, 4); break;
+                case 0xE3: set(c, &c->de.lo, 4); break;
+                case 0xE4: set(c, &c->hl.hi, 4); break;
+                case 0xE5: set(c, &c->hl.lo, 4); break;
+                case 0xE6: temp8 = READ(c, c->hl.reg); set(c, &temp8, 4); WRITE(c, c->hl.reg, temp8); break;
+                case 0xE7: set(c, &c->af.hi, 4); break;
+                case 0xE8: set(c, &c->bc.hi, 5); break;
+                case 0xE9: set(c, &c->bc.lo, 5); break;
+                case 0xEA: set(c, &c->de.hi, 5); break;
+                case 0xEB: set(c, &c->de.lo, 5); break;
+                case 0xEC: set(c, &c->hl.hi, 5); break;
+                case 0xED: set(c, &c->hl.lo, 5); break;
+                case 0xEE: temp8 = READ(c, c->hl.reg); set(c, &temp8, 5); WRITE(c, c->hl.reg, temp8); break;
+                case 0xEF: set(c, &c->af.hi, 5); break;
+
+                case 0xF0: set(c, &c->bc.hi, 6); break;
+                case 0xF1: set(c, &c->bc.lo, 6); break;
+                case 0xF2: set(c, &c->de.hi, 6); break;
+                case 0xF3: set(c, &c->de.lo, 6); break;
+                case 0xF4: set(c, &c->hl.hi, 6); break;
+                case 0xF5: set(c, &c->hl.lo, 6); break;
+                case 0xF6: temp8 = READ(c, c->hl.reg); set(c, &temp8, 6); WRITE(c, c->hl.reg, temp8); break;
+                case 0xF7: set(c, &c->af.hi, 6); break;
+                case 0xF8: set(c, &c->bc.hi, 7); break;
+                case 0xF9: set(c, &c->bc.lo, 7); break;
+                case 0xFA: set(c, &c->de.hi, 7); break;
+                case 0xFB: set(c, &c->de.lo, 7); break;
+                case 0xFC: set(c, &c->hl.hi, 7); break;
+                case 0xFD: set(c, &c->hl.lo, 7); break;
+                case 0xFE: temp8 = READ(c, c->hl.reg); set(c, &temp8, 7); WRITE(c, c->hl.reg, temp8); break;
+                case 0xFF: set(c, &c->af.hi, 7); break;
+            };
             break;
         case 0xCC: // CALL Z,nn
             if(CPU_CheckFlag(c, Z_FLAG)){
@@ -727,6 +1063,173 @@ void CPU_EmulateCycle(CPU *c){
             break;
         case 0xCF:
             rst(c, 0x08);
+            break;
+
+        case 0xD0: // RET NC
+            if(!CPU_CheckFlag(c, C_FLAG))
+                ret(c);
+            c->cycles += CYCLES(1);
+            break;
+        case 0xD1:
+            pop(c, &c->de);
+            break;
+        case 0xD2: // JP NC,nn
+            if(!CPU_CheckFlag(c, C_FLAG)){
+                jp_nn(c);
+            }
+            else{
+                c->pc += 2; // skip over nn
+                c->cycles += CYCLES(2);
+            }
+            break;
+        case 0xD3: // Unused
+            break;
+        case 0xD4: // CALL NZ,nn
+            if(!CPU_CheckFlag(c, C_FLAG)){
+                call_nn(c);
+            }
+            else{
+                c->pc += 2;
+                c->cycles += CYCLES(2);
+            }
+            break;
+        case 0xD5:
+            push(c, &c->de);
+            break;
+        case 0xD6:
+            sub_a(c, FETCH(c));
+            break;
+        case 0xD7:
+            rst(c, 0x10);
+            break;
+        case 0xD8: // RET C
+            if(CPU_CheckFlag(c, C_FLAG))
+                ret(c);
+            c->cycles += CYCLES(1);
+            break;
+        case 0xD9: // RETI
+            ret(c);
+            c->IME = true;
+            break;
+        case 0xDA: // JP C,nn
+            if(CPU_CheckFlag(c, C_FLAG)){
+                jp_nn(c);
+            }
+            else{
+                c->pc += 2;
+                c->cycles += CYCLES(2);
+            }
+            break;
+        case 0xDB: // Unused
+            break;
+        case 0xDC: // CALL C,nn
+            if(CPU_CheckFlag(c, C_FLAG)){
+                call_nn(c);
+            }
+            else{
+                c->pc += 2;
+                c->cycles += CYCLES(2);
+            }
+            break;
+        case 0xDD: // Unused
+            break;
+        case 0xDE:
+            sbc_a(c, FETCH(c));
+            break;
+        case 0xDF:
+            rst(c, 0x18);
+            break;
+
+        case 0xE0: // LDH ($FF00 + n),A
+            WRITE(c, 0xFF00 + FETCH(c), c->af.hi);
+            break;
+        case 0xE1:
+            pop(c, &c->hl);
+            break;
+        case 0xE2: // LD ($FF00 + C), A
+            WRITE(c, 0xFF00 + c->bc.lo, c->af.hi);
+            break;
+        case 0xE3: // Unused
+        case 0xE4: // Unused
+            break;
+        case 0xE5:
+            push(c, &c->hl);
+            break;
+        case 0xE6:
+            and_a(c, FETCH(c));
+            break;
+        case 0xE7:
+            rst(c, 0x20);
+            break;
+        case 0xE8: // ADD SP,e
+            temp16 = FETCH(c);
+            temp16 = (temp16 ^ 0x80) - 0x80; // sign-extend
+            c->sp += temp16;
+            c->cycles += CYCLES(2);
+            break;
+        case 0xE9:
+            c->pc = c->hl.reg;
+            break;
+        case 0xEA:
+            WRITE(c, imm16(c), c->af.hi);
+            break;
+        case 0xEB: // Unused
+        case 0xEC: // Unused
+        case 0xED: // Unused
+            break;
+        case 0xEE:
+            xor_a(c, FETCH(c));
+            break;
+        case 0xEF:
+            rst(c, 0x28);
+            break;
+        case 0xF0: // LDH A,($FF00 + n)
+            c->af.hi = READ(c, 0xFF00 + FETCH(c));
+            break;
+        case 0xF1:
+            pop(c, &c->af);
+            break;
+        case 0xF2: // LD A,($FF00 + C)
+            c->af.hi = READ(c, 0xFF00 + c->bc.lo);
+            break;
+        case 0xF3: // DI
+            c->IME = false;
+            break;
+        case 0xF4: // Unused
+            break;
+        case 0xF5:
+            push(c, &c->af);
+            break;
+        case 0xF6:
+            or_a(c, FETCH(c));
+            break;
+        case 0xF7:
+            rst(c, 0x30);
+            break;
+        case 0xF8: // LDHL SP+e
+            temp16 = FETCH(c);
+            temp16 = (temp16 ^ 0x08) - 0x80; // sign-extend
+            c->hl.reg = c->sp + temp16;
+            c->cycles += CYCLES(1);
+            break;
+        case 0xF9:
+            c->sp = c->hl.reg;
+            c->cycles += CYCLES(1);
+            break;
+        case 0xFA:
+            c->af.hi = READ(c, imm16(c));
+            break;
+        case 0xFB: // EI
+            c->IME = true;
+            break;
+        case 0xFC: // Unused
+        case 0xFD: // Unused
+            break;
+        case 0xFE:
+            cp_a(c, FETCH(c));
+            break;
+        case 0xFF:
+            rst(c, 0x38);
             break;
     };
 }
