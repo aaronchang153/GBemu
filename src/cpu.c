@@ -473,9 +473,23 @@ void CPU_EmulateCycle(CPU *c){
             c->hl.hi = FETCH(c);
             break;
         case 0x27: // DAA
-            /*******************************/
-            /***** NOT YET IMPLEMENTED *****/
-            /*******************************/
+            temp16 = c->af.hi;
+            if(CPU_CheckFlag(c, N_FLAG)) {
+                if(CPU_CheckFlag(c, H_FLAG))
+                    temp16 += 0xFA;
+                if(CPU_CheckFlag(c, C_FLAG))
+                    temp16 -= 0x60;
+            }
+            else {
+                if(CPU_CheckFlag(c, H_FLAG) || (temp16 & 0xF) > 9)
+                    temp16 += 0x06;
+                if(CPU_CheckFlag(c, C_FLAG) || temp16 > 0x9F)
+                    temp16 += 0x60;
+            }
+            c->af.hi = temp16 & 0xFF;
+            CPU_ClearFlag(c, H_FLAG);
+            CPU_SetFlag(c, C_FLAG, temp16 > 0xFF);
+            CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
             break;
         case 0x28: // JR Z,r8
             if(CPU_CheckFlag(c, Z_FLAG))
