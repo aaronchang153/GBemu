@@ -1,3 +1,8 @@
+/**
+ * This module was replaced by the CPU_EmulateCycle function in the cpu module.
+ * It's just being kept around for reference.
+ */
+
 #include "opcode.h"
 
 #include <stdio.h>

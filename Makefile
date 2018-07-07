@@ -1,16 +1,18 @@
 INCLUDE = -I include -I include/debug -I SDL2/include/SDL2 -L SDL2/lib
 CFLAGS  = -Wall -g -c -DDEBUG
 LFLAGS = -Wall -g -lmingw32 -lSDL2main -lSDL2# -Wl,-subsystem,windows
-OBJECT_FILES = obj/main.o obj/cpu.o obj/decode.o obj/opcode.o obj/memory.o obj/cartridge.o obj/timer.o obj/interrupt.o obj/graphics.o obj/display.o obj/joypad.o obj/gameboy.o
+OBJECT_FILES = obj/main.o obj/cpu.o obj/memory.o obj/cartridge.o obj/timer.o obj/interrupt.o obj/graphics.o obj/display.o obj/joypad.o obj/gameboy.o
 
 all : GBemu
 
 cpu.o : src/cpu.c include/cpu.h
 	gcc $(INCLUDE) $(CFLAGS) src/cpu.c -o obj/cpu.o
 
+# decode unused
 decode.o : src/decode.c include/decode.h
 	gcc $(INCLUDE) $(CFLAGS) src/decode.c -o obj/decode.o
 
+# opcode unused
 opcode.o : src/opcode.c include/opcode.h
 	gcc $(INCLUDE) $(CFLAGS) src/opcode.c -o obj/opcode.o
 
@@ -41,7 +43,7 @@ gameboy.o : src/gameboy.c include/gameboy.h
 main.o : main.c
 	gcc $(INCLUDE) $(CFLAGS) main.c -o obj/main.o
 
-GBemu_Debug : cpu.o opcode.o decode.o memory.o cartridge.o timer.o interrupt.o graphics.o display.o joypad.o gameboy.o main.o
+GBemu_Debug : cpu.o memory.o cartridge.o timer.o interrupt.o graphics.o display.o joypad.o gameboy.o main.o
 	gcc $(INCLUDE) $(CFLAGS) src/debug/disassemble.c -o obj/disassemble.o
 	gcc $(INCLUDE) $(CFLAGS) src/debug/gbdebug.c -o obj/gbdebug.o
 	gcc $(INCLUDE) $(OBJECT_FILES) obj/disassemble.o obj/gbdebug.o $(LFLAGS) -o bin/GBemu_Debug.exe
