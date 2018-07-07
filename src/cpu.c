@@ -254,8 +254,8 @@ static inline void jr_e(CPU *c){
 
 // Call
 static inline void call_nn(CPU *c){
-    WRITE(c, c->sp-1, hi(c->pc));
-    WRITE(c, c->sp-2, lo(c->pc));
+    WRITE(c, c->sp-1, hi(c->pc + 2));
+    WRITE(c, c->sp-2, lo(c->pc + 2));
     PC_WRITE(c, imm16(c));
     c->sp -= 2;
 }
@@ -383,7 +383,7 @@ void CPU_EmulateCycle(CPU *c){
             dec_r8(c, &c->bc.lo);
             break;
         case 0x0E:
-            c->bc.lo = READ(c, FETCH(c));
+            c->bc.lo = FETCH(c);
             break;
         case 0x0F: // RRCA
             CPU_ClearFlag(c, H_FLAG | N_FLAG | Z_FLAG);
@@ -458,7 +458,7 @@ void CPU_EmulateCycle(CPU *c){
             ld_imm16(c, &c->hl);
             break;
         case 0x22: // LDI (HL),A
-            WRITE(c, c->hl.reg, c->af.hi++);
+            WRITE(c, c->hl.reg++, c->af.hi);
             break;
         case 0x23:
             inc_r16(c, &c->hl.reg);
