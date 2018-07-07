@@ -790,7 +790,8 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x04: rlc(c, &c->hl.hi); break;
                 case 0x05: rlc(c, &c->hl.lo); break;
                 case 0x06: temp8 = READ(c, c->hl.reg); rlc(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
-                case 0x07: rrc(c, &c->af.hi); break;
+                case 0x07: rlc(c, &c->af.hi); break;
+
                 case 0x08: rrc(c, &c->bc.hi); break;
                 case 0x09: rrc(c, &c->bc.lo); break;
                 case 0x0A: rrc(c, &c->de.hi); break;
@@ -808,6 +809,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x15: rl(c, &c->hl.lo); break;
                 case 0x16: temp8 = READ(c, c->hl.reg); rl(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
                 case 0x17: rl(c, &c->af.hi); break;
+
                 case 0x18: rr(c, &c->bc.hi); break;
                 case 0x19: rr(c, &c->bc.lo); break;
                 case 0x1A: rr(c, &c->de.hi); break;
@@ -825,6 +827,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x25: sla(c, &c->hl.lo); break;
                 case 0x26: temp8 = READ(c, c->hl.reg); sla(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
                 case 0x27: sla(c, &c->af.hi); break;
+
                 case 0x28: sra(c, &c->bc.hi); break;
                 case 0x29: sra(c, &c->bc.lo); break;
                 case 0x2A: sra(c, &c->de.hi); break;
@@ -842,6 +845,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x35: swap(c, &c->hl.lo); break;
                 case 0x36: temp8 = READ(c, c->hl.reg); swap(c, &temp8); WRITE(c, c->hl.reg, temp8); break;
                 case 0x37: swap(c, &c->af.hi); break;
+
                 case 0x38: srl(c, &c->bc.hi); break;
                 case 0x39: srl(c, &c->bc.lo); break;
                 case 0x3A: srl(c, &c->de.hi); break;
@@ -859,6 +863,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x45: bit(c, &c->hl.lo, 0); break;
                 case 0x46: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 0); break;
                 case 0x47: bit(c, &c->af.hi, 0); break;
+
                 case 0x48: bit(c, &c->bc.hi, 1); break;
                 case 0x49: bit(c, &c->bc.lo, 1); break;
                 case 0x4A: bit(c, &c->de.hi, 1); break;
@@ -876,6 +881,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x55: bit(c, &c->hl.lo, 2); break;
                 case 0x56: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 2); break;
                 case 0x57: bit(c, &c->af.hi, 2); break;
+
                 case 0x58: bit(c, &c->bc.hi, 3); break;
                 case 0x59: bit(c, &c->bc.lo, 3); break;
                 case 0x5A: bit(c, &c->de.hi, 3); break;
@@ -893,6 +899,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x65: bit(c, &c->hl.lo, 4); break;
                 case 0x66: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 4); break;
                 case 0x67: bit(c, &c->af.hi, 4); break;
+
                 case 0x68: bit(c, &c->bc.hi, 5); break;
                 case 0x69: bit(c, &c->bc.lo, 5); break;
                 case 0x6A: bit(c, &c->de.hi, 5); break;
@@ -910,6 +917,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x75: bit(c, &c->hl.lo, 6); break;
                 case 0x76: temp8 = READ(c, c->hl.reg); bit(c, &temp8, 6); break;
                 case 0x77: bit(c, &c->af.hi, 6); break;
+
                 case 0x78: bit(c, &c->bc.hi, 7); break;
                 case 0x79: bit(c, &c->bc.lo, 7); break;
                 case 0x7A: bit(c, &c->de.hi, 7); break;
@@ -927,6 +935,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x85: res(c, &c->hl.lo, 0); break;
                 case 0x86: temp8 = READ(c, c->hl.reg); res(c, &temp8, 0); WRITE(c, c->hl.reg, temp8); break;
                 case 0x87: res(c, &c->af.hi, 0); break;
+
                 case 0x88: res(c, &c->bc.hi, 1); break;
                 case 0x89: res(c, &c->bc.lo, 1); break;
                 case 0x8A: res(c, &c->de.hi, 1); break;
@@ -944,6 +953,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0x95: res(c, &c->hl.lo, 2); break;
                 case 0x96: temp8 = READ(c, c->hl.reg); res(c, &temp8, 2); WRITE(c, c->hl.reg, temp8); break;
                 case 0x97: res(c, &c->af.hi, 2); break;
+
                 case 0x98: res(c, &c->bc.hi, 3); break;
                 case 0x99: res(c, &c->bc.lo, 3); break;
                 case 0x9A: res(c, &c->de.hi, 3); break;
@@ -961,6 +971,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0xA5: res(c, &c->hl.lo, 4); break;
                 case 0xA6: temp8 = READ(c, c->hl.reg); res(c, &temp8, 4); WRITE(c, c->hl.reg, temp8); break;
                 case 0xA7: res(c, &c->af.hi, 4); break;
+
                 case 0xA8: res(c, &c->bc.hi, 5); break;
                 case 0xA9: res(c, &c->bc.lo, 5); break;
                 case 0xAA: res(c, &c->de.hi, 5); break;
@@ -978,6 +989,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0xB5: res(c, &c->hl.lo, 6); break;
                 case 0xB6: temp8 = READ(c, c->hl.reg); res(c, &temp8, 6); WRITE(c, c->hl.reg, temp8); break;
                 case 0xB7: res(c, &c->af.hi, 6); break;
+
                 case 0xB8: res(c, &c->bc.hi, 7); break;
                 case 0xB9: res(c, &c->bc.lo, 7); break;
                 case 0xBA: res(c, &c->de.hi, 7); break;
@@ -995,6 +1007,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0xC5: set(c, &c->hl.lo, 0); break;
                 case 0xC6: temp8 = READ(c, c->hl.reg); set(c, &temp8, 0); WRITE(c, c->hl.reg, temp8); break;
                 case 0xC7: set(c, &c->af.hi, 0); break;
+
                 case 0xC8: set(c, &c->bc.hi, 1); break;
                 case 0xC9: set(c, &c->bc.lo, 1); break;
                 case 0xCA: set(c, &c->de.hi, 1); break;
@@ -1012,6 +1025,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0xD5: set(c, &c->hl.lo, 2); break;
                 case 0xD6: temp8 = READ(c, c->hl.reg); set(c, &temp8, 2); WRITE(c, c->hl.reg, temp8); break;
                 case 0xD7: set(c, &c->af.hi, 2); break;
+
                 case 0xD8: set(c, &c->bc.hi, 3); break;
                 case 0xD9: set(c, &c->bc.lo, 3); break;
                 case 0xDA: set(c, &c->de.hi, 3); break;
@@ -1029,6 +1043,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0xE5: set(c, &c->hl.lo, 4); break;
                 case 0xE6: temp8 = READ(c, c->hl.reg); set(c, &temp8, 4); WRITE(c, c->hl.reg, temp8); break;
                 case 0xE7: set(c, &c->af.hi, 4); break;
+
                 case 0xE8: set(c, &c->bc.hi, 5); break;
                 case 0xE9: set(c, &c->bc.lo, 5); break;
                 case 0xEA: set(c, &c->de.hi, 5); break;
@@ -1046,6 +1061,7 @@ void CPU_EmulateCycle(CPU *c){
                 case 0xF5: set(c, &c->hl.lo, 6); break;
                 case 0xF6: temp8 = READ(c, c->hl.reg); set(c, &temp8, 6); WRITE(c, c->hl.reg, temp8); break;
                 case 0xF7: set(c, &c->af.hi, 6); break;
+
                 case 0xF8: set(c, &c->bc.hi, 7); break;
                 case 0xF9: set(c, &c->bc.lo, 7); break;
                 case 0xFA: set(c, &c->de.hi, 7); break;
