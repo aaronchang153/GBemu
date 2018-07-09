@@ -472,19 +472,23 @@ void CPU_EmulateCycle(CPU *c){
             temp16 = c->af.hi;
             if(CPU_CheckFlag(c, N_FLAG)) {
                 if(CPU_CheckFlag(c, H_FLAG))
-                    temp16 += 0xFA;
-                if(CPU_CheckFlag(c, C_FLAG))
-                    temp16 -= 0x60;
+                    temp16 += (CPU_CheckFlag(c, C_FLAG) ? 0x9A : 0xFA);
+                else
+                    temp16 += (CPU_CheckFlag(c, C_FLAG) ? 0xA0 : 0x00);
+                // C flag equal to its previous value
             }
             else {
-                if(CPU_CheckFlag(c, H_FLAG) || (temp16 & 0xF) > 9)
+                if(CPU_CheckFlag(c, H_FLAG) || (temp16 & 0x0F) > 9){
                     temp16 += 0x06;
-                if(CPU_CheckFlag(c, C_FLAG) || temp16 > 0x9F)
+                    CPU_ClearFlag(c, C_FLAG);
+                }
+                if(CPU_CheckFlag(c, C_FLAG) || (temp16 & 0xFF) > 0x99){
                     temp16 += 0x60;
+                    CPU_SetFlag(c, C_FLAG, true);
+                }
             }
             c->af.hi = temp16 & 0xFF;
             CPU_ClearFlag(c, H_FLAG);
-            CPU_SetFlag(c, C_FLAG, temp16 > 0xFF);
             CPU_SetFlag(c, Z_FLAG, c->af.hi == 0);
             break;
         case 0x28: // JR Z,r8
@@ -1214,6 +1218,7 @@ void CPU_EmulateCycle(CPU *c){
             break;
         case 0xF1:
             pop(c, &c->af);
+            c->af.lo &= 0xF0; // Lower 4 bits of F should never be written to
             break;
         case 0xF2: // LD A,($FF00 + C)
             c->af.hi = READ(c, 0xFF00 + c->bc.lo);
@@ -1234,7 +1239,7 @@ void CPU_EmulateCycle(CPU *c){
             break;
         case 0xF8: // LDHL SP+e
             temp16 = FETCH(c);
-            temp16 = (temp16 ^ 0x08) - 0x80; // sign-extend
+            temp16 = (temp16 ^ 0x80) - 0x80; // sign-extend
             c->hl.reg = c->sp + temp16;
             c->cycles += CYCLES(1);
             break;
