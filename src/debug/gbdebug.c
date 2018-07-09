@@ -6,6 +6,8 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 static const int CYCLES_PER_UPDATE = CLK_F / UPDATES_PER_SEC;
 static void Get_Command(GAMEBOY *gb, int *counter, int *bp, bool *cont, bool *running, bool *restart);
@@ -38,7 +40,7 @@ static int Parse_Hex(char *in){
     }
 }
 
-static void Print_State(CPU *c){
+static void Print_State(CPU *c, uint64_t inst_exe){
     printf("==================================================\n");
     printf("OPCODE: 0x%02x\t\tDISASSEMBLY: %s\n", c->ir, Disassemble_Instruction(c));
     printf("REGISTERS:\n");
@@ -60,6 +62,7 @@ static void Print_State(CPU *c){
     //printf("\tMEM[HL-1]: 0x%02x\n", Mem_ReadByte(c->memory, c->hl.reg-1));
     printf("\tMEM[HL]  : 0x%02x\n", Mem_ReadByte(c->memory, c->hl.reg));
     //printf("\tMEM[HL+1]: 0x%02x\n", Mem_ReadByte(c->memory, c->hl.reg+1));
+    printf("\tInstructions Executed: %" PRIu64 " (0x%" PRIx64 ")\n", inst_exe, inst_exe);
     printf("==================================================\n");
 }
 
@@ -83,44 +86,14 @@ static void Dump_Memory(CPU *c){
     }
 }
 
-void Enter_Debug_Mode(GAMEBOY *gb){
-    char input;
-    while(true){
-        unsigned int total_cycles = 0;
-        unsigned int cycles;
-
-        while(total_cycles < CYCLES_PER_UPDATE){
-            CPU_Fetch(gb->cpu);
-            Print_State(gb->cpu);
-            input = getchar();
-            if(input == 'q'){
-                break;
-            }
-            else if(input == 'D'){
-                Dump_Memory(gb->cpu);
-            }
-            CPU_DecodeExecute(gb->cpu);
-            cycles = CPU_GetCycles(gb->cpu);
-            total_cycles += cycles;
-            Timer_Update(gb->timer, cycles);
-            Graphics_Update(gb->graphics, cycles);
-            Interrupt_Handle(gb->cpu);
-        }
-        Graphics_RenderScreen(gb->graphics);
-        if(total_cycles < CYCLES_PER_UPDATE){
-            break;
-        }
-    }
-}
-
 void Start_Debugger(GAMEBOY *gb){
     int bp;
     int counter = 0;
     bool cont = false;
     bool restart = false;
-    unsigned int total_cycles = 0;
-    unsigned int cycles;
-    unsigned int instructions_executed = 0;
+    uint32_t total_cycles = 0;
+    uint32_t cycles;
+    uint64_t instructions_executed = 0;
     SDL_Event event;
     bool running = true;
     while(running){
@@ -150,7 +123,7 @@ void Start_Debugger(GAMEBOY *gb){
                     cont = false;
                 if(!cont || counter == 1){
                     cont = false;
-                    Print_State(gb->cpu);
+                    Print_State(gb->cpu, instructions_executed);
                     Get_Command(gb, &counter, &bp, &cont, &running, &restart);
                     if(restart){
                         restart = false;
