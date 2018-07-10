@@ -2,3 +2,4 @@
 bin/
 obj/
 SDL2/
+Mem_Dump.txt
