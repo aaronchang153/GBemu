@@ -45,9 +45,9 @@ bool Joypad_SetState(JOYPAD *j, SDL_Event e, int state, BYTE p1){
 
 static int MapKeyPress(SDL_Event e){
     switch(e.key.keysym.scancode){
-        case SDL_SCANCODE_J: // A
+        case SDL_SCANCODE_K: // A
             return 0;
-        case SDL_SCANCODE_K: // B
+        case SDL_SCANCODE_J: // B
             return 1;
         case SDL_SCANCODE_V: // SELECT
             return 2;
