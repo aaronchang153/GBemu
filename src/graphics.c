@@ -287,7 +287,7 @@ void Graphics_RenderSprites(GRAPHICS *g, BYTE lcdc)
                 colorNum += TEST_BIT(color_data1, colorbit) ? 0x01 : 0x00;
 
                 WORD colorAddress = TEST_BIT(attributes, 4) ? 0xFF49 : 0xFF48;
-                unsigned int color = MapColor(colorNum, colorAddress);
+                unsigned int color = MapColor(colorNum, Mem_ReadByte(g->memory, colorAddress));
 
                 // white is transparent for sprites.
                 if (color != WHITE){
