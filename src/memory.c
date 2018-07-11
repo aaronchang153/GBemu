@@ -1,6 +1,5 @@
 #include "memory.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -117,8 +116,6 @@ void Mem_WriteByte(MEMORY *mem, WORD addr, BYTE data){
             mem->mem[addr - 0xE000] = data;
             break;
         default:
-            // Tetris still tries to write here so I guess it's not a big deal
-            // printf("Unable to write to address: 0x%04x\n", addr);
             break;
     };
 }
@@ -158,21 +155,17 @@ BYTE Mem_ReadByte(MEMORY *mem, WORD addr){
         case UNUSED:
             return 0x00;
         case IO:
-            if(addr == P1_ADDR){
-                return Joypad_GetState(mem->joypad, mem->mem[addr - 0xC000]);
-            }
-            else if(addr == TAC_ADDR){
-                return mem->mem[addr - 0xC000] & 0x07;
-            }
-            else if(addr == IF_ADDR){
-                return mem->mem[addr - 0xC000] | 0xE0;
-            }
-            else{
-                return mem->mem[addr - 0xC000];
-                //return 0x01;
-            }
+            switch(addr){
+                case P1_ADDR:
+                    return Joypad_GetState(mem->joypad, mem->mem[addr - 0xC000]);
+                case TAC_ADDR:
+                    return mem->mem[addr - 0xC000] & 0x07;
+                case IF_ADDR:
+                    return mem->mem[addr - 0xC000] | 0xE0;
+                default:
+                    return mem->mem[addr - 0xC000];
+            };
         default:
-            printf("Invalid read address: 0x%x\n", addr);
             return 0;
     };
 }
@@ -235,6 +228,6 @@ void Mem_ForceWrite(MEMORY *mem, WORD addr, BYTE data){
             mem->mem[addr - 0xC000] = data;
             break;
         default:
-            printf("Address either cannot be reached or is part of the game cartridge: 0x%04x\n", addr);
+            break;
     };
 }
