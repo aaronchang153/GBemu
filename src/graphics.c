@@ -293,16 +293,6 @@ void Graphics_RenderSprites(GRAPHICS *g, BYTE lcdc)
                 if (color != WHITE){
                     g->frame_buffer[xPos - tilePixel + 7][scanline].color = color;
                 }
-/*
-                int xPix = 0 - tilePixel;
-                xPix += 7;
-
-                int pixel = xPos + xPix;
-
-                g->frame_buffer[pixel][scanline].r = 
-                    g->frame_buffer[pixel][scanline].g = 
-                    g->frame_buffer[pixel][scanline].b = col;
-*/
             }
         }
     }
