@@ -24,16 +24,14 @@ void Timer_Destroy(TIMER *t){
 }
 
 void Timer_Update(TIMER *t, unsigned int cycles){
-    t->div = Mem_ReadByte(t->memory, DIV_ADDR);
     t->tima = Mem_ReadByte(t->memory, TIMA_ADDR);
     t->tma = Mem_ReadByte(t->memory, TMA_ADDR);
     t->tac = Mem_ReadByte(t->memory, TAC_ADDR);
 
-    if(t->div != (t->system_counter & 0xF0) >> 8){
+    if(t->div != Mem_ReadByte(t->memory, DIV_ADDR)){
         t->system_counter = 0;
     }
     t->system_counter += cycles;
-    t->div = (t->system_counter & 0xF0) >> 8;
     if(TEST_BIT(t->tac, 2)){ // Bit 2 of TAC is the timer enable
         t->timer_counter -= cycles;
         if(t->timer_counter <= 0){

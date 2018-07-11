@@ -5,9 +5,14 @@
 #include "memory.h"
 
 typedef struct{
-    WORD system_counter;
     int timer_counter;
-    BYTE div;
+    union{
+        struct{
+            BYTE __unused;
+            BYTE div;
+        };
+        WORD system_counter;
+    };
     BYTE tima;
     BYTE tma;
     BYTE tac;
