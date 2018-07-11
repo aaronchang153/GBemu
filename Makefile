@@ -1,9 +1,14 @@
 INCLUDE = -I include -I include/debug -I SDL2/include/SDL2 -L SDL2/lib
-CFLAGS  = -Wall -g -c -DDEBUG
-LFLAGS = -Wall -g -lmingw32 -lSDL2main -lSDL2# -Wl,-subsystem,windows
+CFLAGS  = -Wall -c
+LFLAGS = -Wall -lmingw32 -lSDL2main -lSDL2
 OBJECT_FILES = obj/main.o obj/cpu.o obj/memory.o obj/cartridge.o obj/timer.o obj/interrupt.o obj/graphics.o obj/display.o obj/joypad.o obj/gameboy.o
 
-all : GBemu
+GBemu_Debug: CFLAGS += -g -DDEBUG
+GBemu_Debug: LFLAGS += -g -DDEBUG
+
+GBemu: CFLAGS += -O2
+#GBemu: LFLAGS += -Wl,-subsystem,windows
+
 
 cpu.o : src/cpu.c include/cpu.h
 	gcc $(INCLUDE) $(CFLAGS) src/cpu.c -o obj/cpu.o
@@ -47,6 +52,9 @@ GBemu_Debug : cpu.o memory.o cartridge.o timer.o interrupt.o graphics.o display.
 	gcc $(INCLUDE) $(CFLAGS) src/debug/disassemble.c -o obj/disassemble.o
 	gcc $(INCLUDE) $(CFLAGS) src/debug/gbdebug.c -o obj/gbdebug.o
 	gcc $(INCLUDE) $(OBJECT_FILES) obj/disassemble.o obj/gbdebug.o $(LFLAGS) -o bin/GBemu_Debug.exe
+
+GBemu : cpu.o memory.o cartridge.o timer.o interrupt.o graphics.o display.o joypad.o gameboy.o main.o
+	gcc $(INCLUDE) $(OBJECT_FILES) $(LFLAGS) -o bin/GBemu.exe
 
 clean : 
 	rm -f obj/*.o
