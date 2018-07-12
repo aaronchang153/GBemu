@@ -44,12 +44,12 @@ void CPU_Destroy(CPU *c);
 
 void CPU_SetMemory(CPU *c, MEMORY *mem);
 
-void CPU_Fetch(CPU *c);
+void CPU_Fetch(CPU *c); // Only used by debugger. Loads instruction at PC to IR
 
-void CPU_DecodeExecute(CPU *c);
+void CPU_DecodeExecute(CPU *c); // Only used by debugger. Calls EmulateCycle
+                                // Kept around to avoid changes to the debugger
 
 // Emulate a single instruction cycle
-// Just calls the above two functions in order
 void CPU_EmulateCycle(CPU *c);
 
 unsigned int CPU_GetCycles(CPU *c);
