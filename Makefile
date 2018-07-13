@@ -1,8 +1,9 @@
-INCLUDE = -I include -I include/debug
+INCLUDE = -I include
 CFLAGS  = -Wall -c
 LFLAGS = -Wall -lmingw32 -lSDL2main -lSDL2
 OBJECT_FILES = obj/main.o obj/cpu.o obj/memory.o obj/cartridge.o obj/timer.o obj/interrupt.o obj/graphics.o obj/display.o obj/joypad.o obj/gameboy.o
 
+GBemu_Debug: INCLUDE += -I include/debug
 GBemu_Debug: CFLAGS += -g -DDEBUG
 GBemu_Debug: LFLAGS += -g -DDEBUG
 
