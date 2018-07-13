@@ -2,7 +2,7 @@
 #define DISPLAY_H
 
 #include "common.h"
-#include "SDL.h"
+#include <SDL2/SDL.h>
 
 #define SCREEN_WIDTH  160
 #define SCREEN_HEIGHT 144

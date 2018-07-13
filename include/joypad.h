@@ -2,7 +2,7 @@
 #define JOYPAD_H
 
 #include "common.h"
-#include "SDL.h"
+#include <SDL2/SDL.h>
 
 #define JOYPAD_PRESSED      0
 #define JOYPAD_NOT_PRESSED  1
