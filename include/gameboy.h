@@ -8,6 +8,7 @@
 #include "graphics.h"
 #include "display.h"
 #include "joypad.h"
+#include "audio.h"
 
 
 typedef struct{
@@ -17,6 +18,7 @@ typedef struct{
     GRAPHICS *graphics;
     DISPLAY *display;
     JOYPAD *joypad;
+    APU *apu;
 } GAMEBOY;
 
 

@@ -13,8 +13,9 @@ GAMEBOY *GB_Create(){
         gb->graphics = Graphics_Create();
         gb->display = Display_Create();
         gb->joypad = Joypad_Create();
+        gb->apu = APU_Create();
         if(gb->cpu == NULL || gb->memory == NULL || gb->timer == NULL ||
-           gb->graphics == NULL || gb->display == NULL || gb->joypad == NULL)
+           gb->graphics == NULL || gb->display == NULL || gb->joypad == NULL || gb->apu == NULL)
         {
             GB_Destroy(gb);
             gb = NULL;
@@ -26,6 +27,7 @@ GAMEBOY *GB_Create(){
             Graphics_SetMemory(gb->graphics, gb->memory);
             Graphics_SetDisplay(gb->graphics, gb->display);
             Mem_SetJoypad(gb->memory, gb->joypad);
+            APU_SetMemory(gb->apu, gb->memory);
         }
     }
     return gb;
@@ -39,6 +41,7 @@ void GB_Destroy(GAMEBOY *gb){
         Graphics_Destroy(gb->graphics);
         Display_Destroy(gb->display);
         Joypad_Destroy(gb->joypad);
+        APU_Destroy(gb->apu);
         free(gb);
     }
 }
@@ -66,6 +69,7 @@ void GB_Update(GAMEBOY *gb){
                 CPU_EmulateCycle(gb->cpu);
                 cycles = CPU_GetCycles(gb->cpu);
                 total_cycles += cycles;
+                APU_Update(gb->apu, (int) cycles);
             }
             else{
                 cycles = 4;
