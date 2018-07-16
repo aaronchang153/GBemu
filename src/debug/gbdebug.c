@@ -139,6 +139,7 @@ void Start_Debugger(GAMEBOY *gb){
                     cycles = CPU_GetCycles(gb->cpu);
                     total_cycles += cycles;
                     instructions_executed++;
+                    APU_Update(gb->apu, (int) cycles);
                 }
                 else{
                     cycles = 4;
