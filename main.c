@@ -20,6 +20,8 @@ int SDL_main(int argc, char *argv[]){
         }
     }
     GAMEBOY *gb = GB_Create();
+    if(gb->apu == NULL)
+        puts("Unable to create APU. No sound will be played.");
     GB_LoadGame(gb, game_file);
     GB_Startup(gb);
 #ifdef DEBUG
