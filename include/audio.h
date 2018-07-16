@@ -43,11 +43,11 @@
 
 #define WAVE_PATTERN_RAM 0xFF30 // $FF30 - $FF3F
 
-#define AUDIO_BUFFER_SIZE 0x800
+#define AUDIO_BUFFER_LENGTH 0x800
 
 typedef struct{
     SDL_AudioSpec audio_spec;
-    int16_t audio_buffer[AUDIO_BUFFER_SIZE]; // samples stored as {left-channel, right-channel}
+    float audio_buffer[AUDIO_BUFFER_LENGTH]; // samples stored as {left-channel, right-channel}
     int sample_number; // current spot in audio_buffer
     int sample_timer; // only sample audio when this timer reaches 0 (cycles)
     int sound_timer[4]; // in cycles
