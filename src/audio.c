@@ -13,12 +13,12 @@
 const int CYCLES_PER_SAMPLE = CLK_F / SAMPLE_FREQUENCY;
 const int CYCLES_PER_FRAME  = CLK_F / FRAME_SEQUENCER_FREQ;
 
-static const int16_t square_wave_table[4][8] = 
+static const float square_wave_table[4][8] = 
 {   // Same type as the audio data buffer and audio spec format
-    {-1,  1,  1,  1,  1,  1,  1,  1}, // 12.5% duty
-    {-1, -1,  1,  1,  1,  1,  1,  1}, // 25% duty
-    {-1, -1, -1, -1,  1,  1,  1,  1}, // 50% duty
-    {-1, -1, -1, -1, -1, -1,  1,  1}  // 75% duty
+    {-1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0}, // 12.5% duty
+    {-1.0, -1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  1.0}, // 25% duty
+    {-1.0, -1.0, -1.0, -1.0,  1.0,  1.0,  1.0,  1.0}, // 50% duty
+    {-1.0, -1.0, -1.0, -1.0, -1.0, -1.0,  1.0,  1.0}  // 75% duty
 };
 
 static inline int us_to_cycles(float us) { return (int) round(us * CLK_F); }
@@ -34,7 +34,7 @@ APU *APU_Create(){
         memset(apu, 0, sizeof(APU));
         SDL_AudioSpec want;
         want.freq = SAMPLE_FREQUENCY;
-        want.format = AUDIO_S16;
+        want.format = AUDIO_F32LSB;
         want.channels = 2; // Stereo Sound
         want.callback = NULL;
         SDL_OpenAudio(&want, &apu->audio_spec);
@@ -69,8 +69,8 @@ void APU_Update(APU *a, int cycles){
         a->sample_timer -= cycles;
         if(a->sample_timer <= 0){
             a->sample_timer += CYCLES_PER_SAMPLE;
-            a->audio_buffer[a->sample_number] = 0;
-            a->audio_buffer[a->sample_number + 1] = 0;
+            a->audio_buffer[a->sample_number] = 0.0;
+            a->audio_buffer[a->sample_number + 1] = 0.0;
 
             Update_Ch1(a, cycles);
             Update_Ch2(a, cycles);
@@ -78,8 +78,8 @@ void APU_Update(APU *a, int cycles){
             Update_Ch4(a, cycles);
             
             a->sample_number += 2;
-            if(a->sample_number == AUDIO_BUFFER_SIZE){
-                SDL_QueueAudio(1, a->audio_buffer, AUDIO_BUFFER_SIZE);
+            if(a->sample_number == AUDIO_BUFFER_LENGTH){
+                SDL_QueueAudio(1, a->audio_buffer, AUDIO_BUFFER_LENGTH);
                 a->sample_number = 0;
             }
         }
