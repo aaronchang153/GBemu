@@ -7,6 +7,9 @@
 #include <stdint.h>
 #include <SDL2/SDL.h>
 
+// Comment this out to use signed 16 bit int audio format
+#define FLOAT32_AUDIO
+
 /**
  * The GameBoy has 4 sound channels:
  *  1. Square wave with sweep and envelope functions
@@ -45,13 +48,19 @@
 
 #define AUDIO_BUFFER_LENGTH 0x800
 
+#ifdef FLOAT32_AUDIO
+typedef float AudioSample;
+#else
+typedef int16_t AudioSample;
+#endif // FLOAT32_AUDIO
+
 typedef struct{
     SDL_AudioSpec audio_spec;
-    float audio_buffer[AUDIO_BUFFER_LENGTH]; // samples stored as {left-channel, right-channel}
+    AudioSample audio_buffer[AUDIO_BUFFER_LENGTH]; // samples stored as {left-channel, right-channel}
     int sample_number; // current spot in audio_buffer
     int sample_timer; // only sample audio when this timer reaches 0 (cycles)
     int sound_timer[4]; // in cycles
-    uint8_t sequence[2]; // Both square wave channels have 8 states depending on the duty
+    int sequence[2]; // Both square wave channels have 8 states depending on the duty
     int frame_countdown[2]; // frame_timer is set to this value when it hits 0
     int frame_timer[2]; // the corresponding square wave sequence is incremented when this hits 0
     MEMORY *memory;
