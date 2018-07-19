@@ -63,6 +63,10 @@ typedef struct{
     int sequence[2]; // Both square wave channels have 8 states depending on the duty
     int frame_countdown[2]; // frame_timer is set to this value when it hits 0
     int frame_timer[2]; // the corresponding square wave sequence is incremented when this hits 0
+    bool envelope_enable[2];
+    int envelope_value[2]; // current volume of channels 1 and 2
+    int envelope_timer[2]; // in cycles
+    BYTE nr51;
     MEMORY *memory;
 } APU;
 
